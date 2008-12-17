@@ -2,7 +2,7 @@ note
 	description: "Summary description for {XMPP_LOGGER}."
 	author: "Jocelyn Fiat"
 	date: "$Date$"
-	revision: "$Revision$"
+	revision: "$Revision: 4$"
 
 class
 	XMPP_LOGGER
@@ -82,6 +82,6 @@ note
 	source: "[
 			 Jocelyn Fiat
 			 Contact: jocelyn@eiffelsolution.com
-			 Website http://www.eiffelsolution.net/
+			 Website http://www.eiffelsolution.com/
 		]"
 end

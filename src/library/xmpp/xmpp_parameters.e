@@ -62,6 +62,6 @@ note
 	source: "[
 			 Jocelyn Fiat
 			 Contact: jocelyn@eiffelsolution.com
-			 Website http://www.eiffelsolution.net/
+			 Website http://www.eiffelsolution.com/
 		]"
 end
