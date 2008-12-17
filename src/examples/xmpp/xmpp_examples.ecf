@@ -12,21 +12,16 @@
 		</option>
 		<setting name="console_application" value="true"/>
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
-		<library name="eif_xmpp" location="..\..\library\xmpp\eif_xmpp.ecf" readonly="false"/>
+		<library name="xmpp" location="..\..\library\xmpp\xmpp.ecf" readonly="false"/>
 		<cluster name="ex_xmpp" location=".\examples\" recursive="true"/>
 		<override name="override" location=".\override\" recursive="true"/>
 	</target>
-	<target name="ex_send_message" extends="common">
+	<target name="send_message" extends="common">
 		<root class="EXAMPLE_SEND_MESSAGE" feature="make"/>
 		<setting name="executable_name" value="send_xmpp_message"/>
 	</target>
-	<target name="ex_jabber_bot" extends="common">
+	<target name="jabber_bot" extends="common">
 		<root class="EXAMPLE_JABBER_BOT" feature="make"/>
 		<setting name="executable_name" value="xmpp_bot"/>
-	</target>
-	<target name="test_jabber" extends="common">
-		<root class="APPLICATION" feature="make"/>
-		<setting name="multithreaded" value="true"/>
-		<library name="thread" location="$ISE_LIBRARY\library\thread\thread.ecf"/>
 	</target>
 </system>
