@@ -10,12 +10,9 @@ class
 inherit
 	ANY
 
-	EXECUTION_ENVIRONMENT
-		export
-			{NONE} all
-		end
+	UC_IMPORTED_UTF8_ROUTINES
 
-	EXCEPTIONS
+	EXECUTION_ENVIRONMENT
 		export
 			{NONE} all
 		end
@@ -79,6 +76,7 @@ feature {NONE} -- Initialization
 			-- Reset current stream
 		do
 			xml_depth := 0
+			buffer := Void
 			if {p: like parser}	parser then
 				p.reset
 			end
@@ -146,19 +144,24 @@ feature -- Access
 	use_ssl: BOOLEAN
 
 	reconnect_timeout: INTEGER assign set_reconnect_timeout
+			-- Timeout for reconnection operation
 
 feature {NONE} -- Implementation
 
 	socket: NETWORK_STREAM_SOCKET
+			-- Network socket used to communicate with xmpp server
 
 	packet_size: INTEGER
 			-- Read socket by amount of `packet_size' bytes
 
 	parser: XM_EIFFEL_PARSER
+			-- XML parser
 
 	buffer: STRING
+			-- Packet buffer used when packet is divided in several pieces
 
 	xml_depth: INTEGER
+			-- Current XML depth parsing
 
 	last_id: INTEGER
 			-- Last id
@@ -173,20 +176,16 @@ feature {NONE} -- Implementation
 	until_count: HASH_TABLE [INTEGER, INTEGER]
 	until_event_data: HASH_TABLE [XMPP_EVENT_DATA, INTEGER]
 
---	last_send: REAL
---	protected $ns_map = array();
---	protected $current_ns = array();
---	protected $nshandlers = array();
---	protected $until_happened = false;
-
-
 feature -- Access: handlers
 
 	xpath_handlers: ARRAYED_LIST [TUPLE [cases: LIST [TUPLE [path: STRING; name: STRING]]; hdl: like xpath_handler]]
+			-- Handler based on Xpath
 
 	id_handlers: HASH_TABLE [like id_handler, STRING]
+			-- Handler based on Id	
 
 	event_handlers: ARRAYED_LIST [TUPLE [name: STRING; hdl: like event_handler]]
+			-- Handler based on Event	
 
 feature -- Element change
 
@@ -303,8 +302,6 @@ feature -- Basic operation
 
 	event (a_name: STRING; a_event_data: like event_handler_argument_type)
 			-- Notify event `a_name'
-		require
-			a_event_data_attached: a_event_data /= Void
 		local
 			t: TUPLE [name: STRING; hdl: like event_handler]
 			k: INTEGER
@@ -342,7 +339,11 @@ feature -- Basic operation
 						end
 						if b then
 							k := until_lst.index
-							a_event_data.set_name (a_name) -- FIXME
+							if {e: like a_event_data} a_event_data then
+								if e.name /~ a_name then
+									e.set_name (a_name) -- FIXME									
+								end
+							end
 							until_event_data.force (a_event_data, k)
 							if until_count.has_key (k) then
 								until_count.force (until_count.found_item + 1, k)
@@ -356,9 +357,10 @@ feature -- Basic operation
 			end
 		end
 
-
 	send (m: STRING)
 			-- Send packet `m'
+		require
+			m_attached: m /= Void
 		local
 			l_reconnect: BOOLEAN
 			err: INTEGER
@@ -384,15 +386,13 @@ feature -- Basic operation
 	connect (a_timeout: INTEGER; a_persistent: BOOLEAN; a_sendinit: BOOLEAN)
 			-- Connect the xmpp server
 		local
-			start_time: like time
+			start_time: like time_point
 			s: NETWORK_STREAM_SOCKET
 			l_continue: BOOLEAN
---			conflag: INTEGER
---			l_conntype: STRING
 		do
 			log ("[Connect] timeout=" + a_timeout.out + " sendinit=" + a_sendinit.out, {XMPP_LOGGER}.log_verbose)
 			send_disconnect := False
-			start_time := time
+			start_time := time_point
 			from
 				l_continue := True
 			until
@@ -404,20 +404,13 @@ feature -- Basic operation
 					check not_yet_implemented: False end
 				end
 
---				if a_persistent then
---					conflag := STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT
---				else
---					conflag := STREAM_CLIENT_CONNECT
---				end
---				l_conntype := "tcp"
---				if use_ssl then
---					l_conntype := "ssl"
---					check False end
---				end
+				if use_ssl then
+					check unsupported: False end
+				end
+
 				s := socket
 				if s = Void or else not s.exists then
 					create s.make_client_by_port (port, host)
---					s.set_reuse_address
 				end
 				s.set_timeout (a_timeout)
 
@@ -435,9 +428,10 @@ feature -- Basic operation
 					s.cleanup
 					s := Void
 					log ("[Sleep] " + a_timeout.out + " seconds", {XMPP_LOGGER}.log_verbose)
+						--| Let's wait a few seconds...
 					sleep (a_timeout.min (5) * 1_000_000_000)
 				end
-				l_continue := s = Void and then time - start_time < a_timeout
+				l_continue := s = Void and then time_point - start_time < a_timeout
 			end
 
 			if s /= Void and then s.exists then
@@ -452,9 +446,14 @@ feature -- Basic operation
 		end
 
 	do_reconnect
+			-- Reconnect to xmpp server
 		do
 			if not is_server then
-				log ("[Reconnect] ...", {XMPP_LOGGER}.log_debug)
+				log ("[Reconnecting] timeout=" + reconnect_timeout.out + " ...", {XMPP_LOGGER}.log_debug)
+				if {s: like socket} socket then
+					s.cleanup
+					socket := Void
+				end
 				connect (reconnect_timeout, False, False)
 				reset
 				event (event_name_reconnect, Void)
@@ -462,14 +461,15 @@ feature -- Basic operation
 		end
 
 	disconnect
+			-- Disconnect xmpp connection
 		local
-			a: ANY
+			e: like process_until
 		do
 			if socket /= Void and then socket.exists then
 				reconnect := False
 				send (stream_end)
 				send_disconnect := True
-				a := process_until (<<event_name_end_stream>>, 5)
+				e := process_until (<<event_name_end_stream>>, 5)
 				disconnected := True
 			end
 		end
@@ -484,20 +484,22 @@ feature -- Basic operation
 
 	process_time (a_timeout: INTEGER)
 			-- Process until a timeout occurs
+			-- timeout in seconds
 		local
 			b: BOOLEAN
 		do
 			if a_timeout = 0 then
 				b := internal_process (0)
 			else
-				b := internal_process (a_timeout * 1_000_000)
+				b := internal_process (a_timeout)
 			end
 		end
 
 	process_until (a_events: ARRAY [STRING]; a_timeout: INTEGER): XMPP_EVENT_DATA
 			-- Process until a specified event or a timeout occurs	
+			-- timeout in seconds			
 		local
-			start: like time
+			start: like time_point
 			event_key: INTEGER
 			l_event_data: XMPP_EVENT_DATA
 			l_continue: BOOLEAN
@@ -508,14 +510,13 @@ feature -- Basic operation
 					log ("[process_until] ->" + s, {XMPP_LOGGER}.log_verbose)
 				end)
 
-			start := time
+			start := time_point
 			until_event_names.force (a_events)
 			until_event_names.finish
 			event_key := until_event_names.index
 			until_event_names.start
 
 			until_count.force (0, event_key)
---			$updated = '';
 			from
 				l_continue := True
 			until
@@ -525,7 +526,7 @@ feature -- Basic operation
 				process
 				l_continue := not disconnected and
 					 until_count.item (event_key) < 1 and
-					 (time - start < a_timeout or a_timeout = -1)
+					 (time_point - start < a_timeout or a_timeout = -1)
 			end
 			if {upl: like until_event_data} until_event_data and then upl.has_key (event_key) then
 				l_event_data := upl.found_item
@@ -533,19 +534,20 @@ feature -- Basic operation
 				until_count.remove (event_key)
 				until_event_names.go_i_th (event_key); until_event_names.remove
 			else
-				l_event_data := Void -- create {like l_event_data}.make
+				l_event_data := Void
 			end
 			Result := l_event_data
 		end
 
-
 feature {NONE} -- Implementation: Execution
 
 	internal_process (maximum: INTEGER): BOOLEAN
+			-- internal process connection
+			-- maximum in seconds
 		local
 			remaining: like time_point
 			l_continue: BOOLEAN
-			start_time, end_time, time_past: like time_point
+			start_time, time_past: like time_point
 			s: like socket
 			msg: STRING
 			l_secs: INTEGER
@@ -560,20 +562,13 @@ feature {NONE} -- Implementation: Execution
 				not l_continue
 			loop
 				start_time := time_point
---				$read = array($this->socket);
---				$write = array();
---				$except = array();
-				l_secs := 1
---				if maximum = -1 then
---					l_usecs := - 1
---					l_secs := -1
---				elseif maximum = 0 then
---					l_secs := 0
---					l_usecs := 0
---				else
---					l_usecs := remaining \\ 1_000_000
---					l_sec := (remaining - l_usecs) // 1_000_000
---				end
+				if maximum = -1 then
+					l_secs := -1
+				elseif maximum = 0 then
+					l_secs := 0
+				else
+					l_secs := remaining.as_integer_32
+				end
 				old_timeout := s.timeout
 				s.set_timeout (l_secs)
 				b := safe_ready_for_reading (s)
@@ -603,19 +598,19 @@ feature {NONE} -- Implementation: Execution
 						end
 					end
 				end
-				end_time := time_point
-				time_past := end_time - start_time;
+				time_past := time_point - start_time
 				remaining := remaining - time_past
-				l_continue := l_continue and ((s /= Void and then s.exists) and (maximum = -1 or remaining > 0))
+				l_continue := buffer /= Void or (l_continue and ((s /= Void and then s.exists) and (maximum = -1 or remaining > 0)))
 				log ("internal_process: maximum=" + maximum.out + " remaining=" + remaining.out
 						+ " start_time=" + start_time.out
-						+ " end_time=" + end_time.out
+						+ " time_past" + time_past.out
 						+ " continue=" + l_continue.out
-						, {XMPP_LOGGER}.log_debug)
+						, {XMPP_LOGGER}.log_verbose)
 			end
 		end
 
 	internal_send_string (s: like socket; msg: STRING): INTEGER
+			-- Internal send string `msg' via socket `s'
 		local
 			retried: BOOLEAN
 		do
@@ -631,6 +626,7 @@ feature {NONE} -- Implementation: Execution
 		end
 
 	safe_ready_for_reading (s: like socket): INTEGER
+			-- Safe `ready_for_reading' on socket `s'
 		local
 			retried: BOOLEAN
 		do
@@ -650,6 +646,7 @@ feature {NONE} -- Implementation: Execution
 		end
 
 	internal_read (s: like socket): STRING
+			-- Internal implementation for socket reading
 		require
 			ready_for_reading: s.ready_for_reading
 		local
@@ -657,7 +654,6 @@ feature {NONE} -- Implementation: Execution
 			bc: INTEGER
 		do
 			if not retried then
---				log ("[InternalRead] ...")
 				from
 					bc := 1
 				until
@@ -680,7 +676,6 @@ feature {NONE} -- Implementation: Execution
 					do_reconnect
 				else
 					s.cleanup
---					socket := Void
 				end
 				Result := Void
 			end
@@ -693,16 +688,46 @@ feature {NONE} -- Implementation: Execution
 		end
 
 	process_xml	(a_xml: STRING)
+			-- Parse `a_xml'
 		local
-			l_parser: like parser
+			p: like parser
+			buf: like buffer
 		do
-			l_parser := parser
-			parser.parse_from_string (a_xml)
+			p := parser
+
+			log ("[XML parsing] starting ...", {XMPP_LOGGER}.log_debug)
+			buf := buffer
+			if a_xml.item (a_xml.count) /= '>' then
+				if buf = Void then
+					create buf.make_from_string (a_xml)
+					buffer := buf
+				else
+					buf.append (a_xml)
+				end
+				log ("[XML parsing] bufferize ...", {XMPP_LOGGER}.log_debug)
+			else
+				if buf = Void then
+					buf := a_xml
+				else
+					log ("[XML parsing] resume ...", {XMPP_LOGGER}.log_debug)
+					buf.append (a_xml)
+				end
+				check buf.item (1) = '<' and buf.item (buf.count) = '>' end
+--				log ("[XML parsing] parse [" + buf.substring (1,10) + "]", {XMPP_LOGGER}.log_debug)
+				if buf ~ stream_end then
+					event (event_name_end_stream, Void)
+				else
+					p.parse_from_string (buf)
+				end
+				buffer := Void
+			end
+			log ("[XML parsing] finished.", {XMPP_LOGGER}.log_debug)
 		end
 
 feature {NONE} -- XML callback
 
 	start_xml (a_tag: XMPP_XML_TAG)
+			-- Start xml tag event
 		do
 			if been_reset then
 				been_reset := False
@@ -712,11 +737,13 @@ feature {NONE} -- XML callback
 		end
 
 	end_xml (a_tag: XMPP_XML_TAG)
+			-- End xml tag event
 		require
 			a_tag_attached: a_tag /= Void
 		local
 			l_attribs: HASH_TABLE [STRING, STRING]
 			l_tag: XMPP_XML_TAG
+			l_id_hdl_keys_to_remove: LINKED_LIST [STRING]
 		do
 			log ("[end_xml] " + a_tag.localname + " [" + xml_depth.out + "]", {XMPP_LOGGER}.log_debug)
 			if been_reset then
@@ -727,7 +754,7 @@ feature {NONE} -- XML callback
 			if xml_depth = 1 then --|? a_tag.depth = 2 then
 				l_attribs := a_tag.attribs
 
-				if {xhdls: like xpath_handlers} xpath_handlers then
+				if {xhdls: like xpath_handlers} xpath_handlers and then not xhdls.is_empty then
 					from
 						xhdls.start
 					until
@@ -746,7 +773,7 @@ feature {NONE} -- XML callback
 										and
 										(l_cases.item.name.is_equal ("*") or l_cases.item.name.is_case_insensitive_equal (l_tag.localname))
 									then
-										log ("[Calling] " + l_cases.item.name, {XMPP_LOGGER}.log_info)
+										log ("[Calling] xpath handler: " + l_cases.item.name, {XMPP_LOGGER}.log_info)
 										xh.hdl.call ([a_tag])
 									end
 									l_cases.forth
@@ -756,18 +783,28 @@ feature {NONE} -- XML callback
 						xhdls.forth
 					end
 				end
-				if {idhdls: like id_handlers} id_handlers then
-					from
-						idhdls.start
-					until
-						idhdls.after
-					loop
-						if l_attribs.has ("id") and then l_attribs.item ("id").is_case_insensitive_equal (idhdls.key_for_iteration) then
-							if {ih: like id_handler} idhdls.item_for_iteration then
-								ih.call ([a_tag])
+				if {idhdls: like id_handlers} id_handlers and then not idhdls.is_empty then
+					if l_attribs.has_key ("id") and then {l_id: STRING} l_attribs.found_item then
+						from
+							idhdls.start
+							create l_id_hdl_keys_to_remove.make
+						until
+							idhdls.after
+						loop
+							if
+								l_id.is_case_insensitive_equal (idhdls.key_for_iteration)
+							then
+								if {ih: like id_handler} idhdls.item_for_iteration then
+									log ("[Calling] id handler: " + l_id, {XMPP_LOGGER}.log_info)
+									l_id_hdl_keys_to_remove.force (idhdls.key_for_iteration)
+									ih.call ([a_tag])
+								end
 							end
+							idhdls.forth
 						end
-						idhdls.forth
+						if not l_id_hdl_keys_to_remove.is_empty then
+							l_id_hdl_keys_to_remove.do_all (agent idhdls.remove)
+						end
 					end
 				end
 			end
@@ -797,32 +834,21 @@ feature -- Constants
 	event_name_subscription_requested: STRING = "subscription_requested"
 	event_name_subscription_accepted: STRING = "subscription_accepted"
 
-
 feature {NONE} -- Implementation
 
 	raise_xmpp_exception (m: STRING)
+			-- Raise XMPP_EXCEPTION exception
+		local
+			e: XMPP_EXCEPTION
 		do
 			log ("[XMPP Exception] " + m, {XMPP_LOGGER}.log_error)
-			raise ("XMPP_EXCEPTION: " + m)
+			create e
+			e.set_message (m)
+			e.raise
 		end
-
-	time: INTEGER_64
-		local
-			t: TIME
-		do
-			create t.make_now
-			Result := t.duration.seconds_count
-		end
-
---	microtime: INTEGER_64
---		local
---			dt: DATE_TIME
---		do
---			create dt.make_now
---			Result := dt.duration.seconds_count // 1_000_000
---		end
 
 	time_point: INTEGER_64
+			-- Time point (seconds)
 		local
 			t: TIME
 		do

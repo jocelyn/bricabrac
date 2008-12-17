@@ -219,6 +219,7 @@ feature -- Basic operations
 		local
 			l_id: STRING
 		do
+			log ("Query Vcard %"" + a_jid + "%" ...", {XMPP_LOGGER}.log_info)
 			l_id := get_id
 			add_id_handler (l_id, agent vcard_get_handler)
 			if a_jid /= Void then
@@ -465,6 +466,7 @@ feature -- Handler
 	 		-- TLS proceed handler
 		do
 			log ("Starting TLS encryption", {XMPP_LOGGER}.log_info)
+			log ("[ERROR] TLS encryption not yet supported!", {XMPP_LOGGER}.log_error)
 			check False end
 --			stream_socket_enable_crypto($this->socket, true, STREAM_CRYPTO_METHOD_SSLv23_CLIENT);
 			reset
@@ -481,7 +483,7 @@ feature -- Handler
 			vcard := a_xml.child (word_vcard)
 			create l_vcard_array.make (word_vcard)
 				--| go through all of the sub elements and add them to the vcard array
-			if {l_subs: LIST [XMPP_XML_TAG]} vcard.childs then
+			if vcard /= Void and then {l_subs: LIST [XMPP_XML_TAG]} vcard.childs then
 				from
 					l_subs.start
 				until

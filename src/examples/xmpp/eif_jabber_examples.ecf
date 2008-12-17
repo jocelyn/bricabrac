@@ -18,9 +18,11 @@
 	</target>
 	<target name="ex_send_message" extends="common">
 		<root class="EXAMPLE_SEND_MESSAGE" feature="make"/>
+		<setting name="executable_name" value="send_xmpp_message"/>
 	</target>
 	<target name="ex_jabber_bot" extends="common">
 		<root class="EXAMPLE_JABBER_BOT" feature="make"/>
+		<setting name="executable_name" value="xmpp_bot"/>
 	</target>
 	<target name="test_jabber" extends="common">
 		<root class="APPLICATION" feature="make"/>
