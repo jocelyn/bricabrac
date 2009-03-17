@@ -2,11 +2,11 @@
 <system xmlns="http://www.eiffel.com/developers/xml/configuration-1-4-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-4-0 http://www.eiffel.com/developers/xml/configuration-1-4-0.xsd" name="twitter" uuid="1FFC5A83-620D-457F-94E5-9E30CD69AD53" library_target="twitter">
 	<target name="twitter">
 		<root all_classes="true"/>
-		<option warning="true" full_class_checking="true" syntax_level="1" >
+		<option warning="true" full_class_checking="true" is_attached_by_default="true" is_void_safe="true" syntax_level="1" >
 		</option>
-		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
-		<library name="curl" location="$ISE_LIBRARY\library\curl\curle.ecf" readonly="false"/>
-		<library name="json" location="json\lib\ejson\json.ecf" readonly="false"/>
+		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
+		<library name="curl" location="$ISE_LIBRARY\library\curl\curl-safe.ecf" readonly="false"/>
+		<library name="json" location="json\lib\ejson\json-safe.ecf" readonly="false"/>
 		<cluster name="twitter" location=".\" recursive="true" >
 			<file_rule>
 				<exclude>/EIFGENs$</exclude>
