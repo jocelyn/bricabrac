@@ -103,46 +103,106 @@ feature -- Element change
 
 feature -- Twitter: Status Methods
 
-	public_timeline (a_since_id: INTEGER): STRING
-			-- getPublicTimeline($format, $since_id = 0)
+	public_timelin: like api_call
+			--Returns the 20 most recent statuses from non-protected users who have set a custom user icon.
+			--	Does not require authentication.
+			--	Note that the public timeline is cached for 60 seconds so requesting it more often than that is a waste of resources.
+			--URL: http://twitter.com/statuses/public_timeline.format
+			--Formats: xml, json, rss, atom
+			--Method(s): GET
+			--API limit: Not applicable
+			--Returns: list of status elements	
 		local
 			l_api_call: STRING
 		do
 			l_api_call := twitter_url ("statuses/public_timeline." + format, Void)
-			if a_since_id > 0 then
-				append_parameters_to_url (l_api_call, <<["since_id", a_since_id.out]>>)
-			end
 			Result := api_call (l_api_call)
 		end
 
---	function getFriendsTimeline($format, $id = NULL, $since = NULL) {
---		if ($id != NULL) {
---			$api_call = sprintf("http://twitter.com/statuses/friends_timeline/%s.%s", $id, $format);
---		}
---		else {
---			$api_call = sprintf("http://twitter.com/statuses/friends_timeline.%s", $format);
---		}
---		if ($since != NULL) {
---			$api_call .= sprintf("?since=%s", urlencode($since));
---		}
---		return $this->APICall($api_call, true);
---	}
---	
---	function getUserTimeline($format, $id = NULL, $count = 20, $since = NULL) {
---		if ($id != NULL) {
---			$api_call = sprintf("http://twitter.com/statuses/user_timeline/%s.%s", $id, $format);
---		}
---		else {
---			$api_call = sprintf("http://twitter.com/statuses/user_timeline.%s", $format);
---		}
---		if ($count != 20) {
---			$api_call .= sprintf("?count=%d", $count);
---		}
---		if ($since != NULL) {
---			$api_call .= sprintf("%ssince=%s", (strpos($api_call, "?count=") === false) ? "?" : "&", urlencode($since));
---		}
---		return $this->APICall($api_call, true);
---	}
+	friends_timeline (a_since_date: detachable STRING; a_since_id: INTEGER; a_count, a_page: INTEGER): like api_call
+			--Returns the 20 most recent statuses posted by the authenticating user and that user's friends. This is the equivalent of /home on the Web.
+			--URL: http://twitter.com/statuses/friends_timeline.format
+			--Formats: xml, json, rss, atom
+			--Method(s): GET
+			--API Limit: 1 per request
+			--Parameters:
+			--    * since.  Optional.
+			--		Narrows the returned results to just those statuses created after the specified HTTP-formatted date, up to 24 hours old.
+			--		The same behavior is available by setting an If-Modified-Since header in your HTTP request.
+			--		Ex: http://twitter.com/statuses/friends_timeline.rss?since=Tue%2C+27+Mar+2007+22%3A55%3A48+GMT
+			--    * since_id.  Optional.
+			--		Returns only statuses with an ID greater than (that is, more recent than) the specified ID.
+			--		Ex: http://twitter.com/statuses/friends_timeline.xml?since_id=12345
+			--    * count.  Optional.
+			--		Specifies the number of statuses to retrieve. May not be greater than 200.
+			--		Ex: http://twitter.com/statuses/friends_timeline.xml?count=5
+			--    * page. Optional.
+			--		Ex: http://twitter.com/statuses/friends_timeline.rss?page=3
+			--Returns: list of status elements
+		local
+			l_api_call: STRING
+		do
+			l_api_call := twitter_url ("statuses/friends_timeline." + format, Void)
+			if a_since_date /= Void then
+				append_parameters_to_url (l_api_call, <<["since", a_since_date]>>)
+			end
+			if a_since_id > 0 then
+				append_parameters_to_url (l_api_call, <<["since_id", a_since_id.out]>>)
+			end
+			if a_count > 0 then
+				append_parameters_to_url (l_api_call, <<["count", a_count.out]>>)
+			end
+			if a_page > 0 then
+				append_parameters_to_url (l_api_call, <<["page", a_page.out]>>)
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
+
+	user_timeline (a_id: INTEGER; a_screen_name: detachable STRING; a_since_date: detachable STRING; a_since_id: INTEGER; a_count, a_page: INTEGER): like api_call
+			--Returns the 20 most recent statuses posted from the authenticating user.
+			-- It's also possible to request another user's timeline via the id parameter below.
+			-- This is the equivalent of the Web /archive page for your own user, or the profile page for a third party.
+			--URL: http://twitter.com/statuses/user_timeline.format
+			--Formats: xml, json, rss, atom
+			--Method(s): GET
+			--Parameters:
+			--    * id.  Optional.  Specifies the ID or screen name of the user for whom to return the friends_timeline.
+			--		 Ex: http://twitter.com/statuses/user_timeline/12345.xml or http://twitter.com/statuses/user_timeline/bob.json.
+			--    * count.  Optional.  Specifies the number of statuses to retrieve. May not be greater than 200.
+			--		Ex: http://twitter.com/statuses/user_timeline.xml?count=5
+			--    * since.  Optional.  Narrows the returned results to just those statuses
+			--		created after the specified HTTP-formatted date, up to 24 hours old.
+			--		The same behavior is available by setting an If-Modified-Since header in your HTTP request.
+			--		Ex: http://twitter.com/statuses/user_timeline.rss?since=Tue%2C+27+Mar+2007+22%3A55%3A48+GMT
+			--    * since_id.  Optional.  Returns only statuses with an ID greater than (that is, more recent than) the specified ID.
+			--		Ex: http://twitter.com/statuses/user_timeline.xml?since_id=12345
+			--    * page. Optional. Ex: http://twitter.com/statuses/user_timeline.rss?page=3
+			--Returns: list of status elements		
+		local
+			l_api_call: STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("statuses/user_timeline/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("statuses/user_timeline/" + a_screen_name.out + "." + format, Void)
+			else
+				l_api_call := twitter_url ("statuses/user_timeline." + format, Void)
+			end
+
+			if a_since_date /= Void then
+				append_parameters_to_url (l_api_call, <<["since", a_since_date]>>)
+			end
+			if a_since_id > 0 then
+				append_parameters_to_url (l_api_call, <<["since_id", a_since_id.out]>>)
+			end
+			if a_count > 0 then
+				append_parameters_to_url (l_api_call, <<["count", a_count.out]>>)
+			end
+			if a_page > 0 then
+				append_parameters_to_url (l_api_call, <<["page", a_page.out]>>)
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
 
 	show_status (a_id: INTEGER): STRING
 			-- Returns a single status, specified by the id parameter below.  The status's author will be returned inline.
@@ -169,7 +229,7 @@ feature -- Twitter: Status Methods
 			--		Invalid/missing status IDs will be ignored.
 			--Returns: status element
 		require
-			vald_format: format_is_xml or format_is_json
+			valid_format: format_is_xml or format_is_json
 		local
 			l_status: STRING
 			l_api_call: STRING
@@ -183,55 +243,107 @@ feature -- Twitter: Status Methods
 			Result := api_call_with_details (l_api_call, True, True)
 		end
 
---	function getReplies($format, $page = 0) {
---		$api_call = sprintf("http://twitter.com/statuses/replies.%s", $format);
---		if ($page) {
---			$api_call .= sprintf("?page=%d", $page);
---		}
---		return $this->APICall($api_call, true);
---	}
---	
---	function destroyStatus($format, $id) {
---		$api_call = sprintf("http://twitter.com/statuses/destroy/%d.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
+	replies (a_since_date: detachable STRING; a_since_id: INTEGER; a_page: INTEGER): like api_call
+			--Returns the 20 most recent @replies (status updates prefixed with @username) for the authenticating user.
+			--URL: http://twitter.com/statuses/replies.format
+			--Formats: xml, json, rss, atom
+			--Method(s): GET
+			--Parameters:
+			--    * page.  Optional. Retrieves the 20 next most recent replies.  Ex: http://twitter.com/statuses/replies.xml?page=3
+			--    * since.  Optional.  Narrows the returned results to just those replies created after the specified HTTP-formatted date, up to 24 hours old.
+			--		The same behavior is available by setting an If-Modified-Since header in your HTTP request.
+			--		Ex: http://twitter.com/statuses/replies.xml?since=Tue%2C+27+Mar+2007+22%3A55%3A48+GMT
+			--    * since_id.  Optional.  Returns only statuses with an ID greater than (that is, more recent than) the specified ID.
+			--		Ex: http://twitter.com/statuses/replies.xml?since_id=12345
+			--Returns: list of status elements		
+		local
+			l_api_call: STRING
+		do
+			l_api_call := twitter_url ("statuses/replies." + format, Void)
+			if a_since_date /= Void then
+				append_parameters_to_url (l_api_call, <<["since", a_since_date]>>)
+			end
+			if a_since_id > 0 then
+				append_parameters_to_url (l_api_call, <<["since_id", a_since_id.out]>>)
+			end
+			if a_page > 0 then
+				append_parameters_to_url (l_api_call, <<["page", a_page.out]>>)
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
+
+	destroy (a_id: INTEGER): like api_call
+			--Destroys the status specified by the required ID parameter.  The authenticating user must be the author of the specified status.
+			--URL: http://twitter.com/statuses/destroy/id.format
+			--Formats: xml, json
+			--Method(s): POST, DELETE
+			--Parameters:
+			--    * id.  Required.  The ID of the status to destroy.  Ex: http://twitter.com/statuses/destroy/12345.json or http://twitter.com/statuses/destroy/23456.xml
+			--Returns: status element		
+		require
+			a_id_required: a_id > 0
+		local
+			l_api_call: STRING
+		do
+			l_api_call := twitter_url ("statuses/destroy/" + a_id.out + "." + format, Void)
+			Result := api_call_with_details (l_api_call, True, True)
+		end
 
 feature -- Twitter: User Methods
---	
---	function getFriends($format, $id = NULL) {
---		// take care of the id parameter
---		if ($id != NULL) {
---			$api_call = sprintf("http://twitter.com/statuses/friends/%s.%s", $id, $format);
---		}
---		else {
---			$api_call = sprintf("http://twitter.com/statuses/friends.%s", $format);
---		}
---		return $this->APICall($api_call, true);
---	}
---	
---	function getFollowers($format, $id = NULL, $page = 1, $lite = false) {
---		// either get authenticated users followers, or followers of specified id
---		if ($id) {
---			$api_call = sprintf("http://twitter.com/statuses/followers/%s.%s", $id, $format);
---		}
---		else {
---			$api_call = sprintf("http://twitter.com/statuses/followers.%s", $format);
---		}
---		// pagination
---		if ($page > 1) {
---			$api_call .= "?page={$page}";
---		}
---		// this isnt in the documentation, but apparently it works
---		if ($lite) {
---			$api_call .= sprintf("%slite=true", ($page > 1) ? "&" : "?");
---		}
---		return $this->APICall($api_call, true);
---	}
---	
-----	function getFeatured($format) {
-----		$api_call = sprintf("http://twitter.com/statuses/featured.%s", $format);
-----		return $this->APICall($api_call);
-----	}
+
+	friends (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): like api_call
+			--Returns the authenticating user's friends, each with current status inline. They are ordered by the order in which they were added as friends. It's also possible to request another user's recent friends list via the id parameter below.
+			-- URL: http://twitter.com/statuses/friends.format
+			--Formats: xml, json
+			--Method(s): GET
+			--Parameters:
+			--    * id.  Optional.  The ID or screen name of the user for whom to request a list of friends.
+			--		Ex: http://twitter.com/statuses/friends/12345.json or http://twitter.com/statuses/friends/bob.xml
+			--    * page.  Optional. Retrieves the next 100 friends.
+			--		Ex: http://twitter.com/statuses/friends.xml?page=2
+			--Returns: list of basic user information elements
+		local
+			l_api_call: STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("statuses/friends/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("statuses/friends/" + a_screen_name.out + "." + format, Void)
+			else
+				l_api_call := twitter_url ("statuses/friends." + format, Void)
+			end
+			if a_page > 0 then
+				append_parameters_to_url (l_api_call, <<["page", a_page.out]>>)
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
+
+	followers (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): like api_call
+			--Returns the authenticating user's followers, each with current status inline.  They are ordered by the order in which they joined Twitter (this is going to be changed).
+			--URL: http://twitter.com/statuses/followers.format
+			--Formats: xml, json
+			--Method(s): GET
+			--Parameters:
+			--    * id.  Optional.  The ID or screen name of the user for whom to request a list of followers.
+			--		Ex: http://twitter.com/statuses/followers/12345.json or http://twitter.com/statuses/followers/bob.xml
+			--    * page.  Optional. Retrieves the next 100 followers.
+			--		Ex: http://twitter.com/statuses/followers.xml?page=2
+			--Returns: list of basic user information elements	
+		local
+			l_api_call: STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("statuses/followers/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("statuses/followers/" + a_screen_name.out + "." + format, Void)
+			else
+				l_api_call := twitter_url ("statuses/followers." + format, Void)
+			end
+			if a_page > 0 then
+				append_parameters_to_url (l_api_call, <<["page", a_page.out]>>)
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
 
 	show_user (a_id: INTEGER; a_screen_name: detachable STRING): STRING
 			--Returns extended information of a given user, specified by ID or screen name as per the required id parameter below.  This information includes design settings, so third party developers can theme their widgets according to a given user's preferences. You must be properly authenticated to request the page of a protected user.
@@ -368,42 +480,141 @@ feature -- Twitter: Direct Message Methods
 
 feature -- Twitter: Friendship Methods
 
---	
---	function createFriendship($format, $id) {
---		$api_call = sprintf("http://twitter.com/friendships/create/%s.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
---	
---	function destroyFriendship($format, $id) {
---		$api_call = sprintf("http://twitter.com/friendships/destroy/%s.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
---	
---	function friendshipExists($format, $user_a, $user_b) {
---		$api_call = sprintf("http://twitter.com/friendships/exists.%s?user_a=%s&user_b=%s", $format, $user_a, $user_b);
---		return $this->APICall($api_call, true);
---	}
+	create_friendship (a_id: INTEGER; a_screen_name: detachable STRING; a_follow: BOOLEAN): like api_call
+			--Befriends the user specified in the ID parameter as the authenticating user.  Returns the befriended user in the requested format when successful.  Returns a string describing the failure condition when unsuccessful.
+			--URL: http://twitter.com/friendships/create/id.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * id.  Required.  The ID or screen name of the user to befriend.
+			--		Ex: http://twitter.com/friendships/create/12345.json or http://twitter.com/friendships/create/bob.xml
+			--    * follow.  Optional.  Enable notifications for the target user in addition to becoming friends.
+			--	Ex:  http://twitter.com/friendships/create/bob.json?follow=true
+			--Returns: basic user information element
+		local
+			l_api_call: detachable STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("friendships/create/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("friendships/create/" + a_screen_name.out + "." + format, Void)
+			else
+				check False end
+			end
+			if l_api_call /= Void then
+				if a_follow then
+					append_parameters_to_url (l_api_call, <<["follow", "true"]>>)
+				end
+				Result := api_call_with_details (l_api_call, True, True)
+			else
+				create Result.make_empty
+			end
+		end
+
+	destroy_friendship (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Discontinues friendship with the user specified in the ID parameter as the authenticating user.  Returns the un-friended user in the requested format when successful.  Returns a string describing the failure condition when unsuccessful.
+			--URL: http://twitter.com/friendships/destroy/id.format
+			--Formats: xml, json
+			--Method(s): POST, DELETE
+			--Parameters:
+			--    * id.  Required.  The ID or screen name of the user with whom to discontinue friendship.
+			--		Ex: http://twitter.com/friendships/destroy/12345.json or http://twitter.com/friendships/destroy/bob.xml
+			--Returns: basic user information element
+		local
+			l_api_call: detachable STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("friendships/destroy/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("friendships/destroy/" + a_screen_name.out + "." + format, Void)
+			else
+				check False end
+			end
+			if l_api_call /= Void then
+				Result := api_call_with_details (l_api_call, True, True)
+			else
+				create Result.make_empty
+			end
+		end
+
+	friendship_exists (a_id: INTEGER; a_screen_name: detachable STRING;
+					b_id: INTEGER; b_screen_name: detachable STRING): like api_call
+			--Tests if a friendship exists between two users.
+			--URL: http://twitter.com/friendships/exists.format
+			--Formats: xml, json
+			--Method(s): GET
+			--Parameters:
+			--    * user_a.  Required.  The ID or screen_name of the first user to test friendship for.
+			--    * user_b.  Required.  The ID or screen_name of the second user to test friendship for.
+			--    * Ex: http://twitter.com/friendships/exists.xml?user_a=alice&user_b=bob
+			--Returns: true, false
+		local
+			l_api_call: STRING
+		do
+			l_api_call := twitter_url ("friendships/exists." + format, Void)
+			if a_id > 0 then
+				append_parameters_to_url (l_api_call, <<["user_a", a_id.out]>>)
+			elseif a_screen_name /= Void then
+				append_parameters_to_url (l_api_call, <<["user_a", a_screen_name]>>)
+			else
+				check False end
+			end
+
+			if b_id > 0 then
+				append_parameters_to_url (l_api_call, <<["user_b", b_id.out]>>)
+			elseif b_screen_name /= Void then
+				append_parameters_to_url (l_api_call, <<["user_b", b_screen_name]>>)
+			else
+				check False end
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
 
 feature -- Twitter: Social Graph Methods
 
---ids (friends)
---Returns an array of numeric IDs for every user the specified user is following.
---URL: http://twitter.com/friends/ids.xml
---Formats: xml, json
---Method(s): GET
---Parameters:
---    * id.  Optional.  The ID or screen_name of the user to retrieve the friends ID list for.  Ex: http://twitter.com/friends/ids/bob.xml
---Returns: list of IDs
+	friends_ids (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Returns an array of numeric IDs for every user the specified user is following.
+			--URL: http://twitter.com/friends/ids.xml
+			--Formats: xml, json
+			--Method(s): GET
+			--Parameters:
+			--    * id.  Optional.  The ID or screen_name of the user to retrieve the friends ID list for.
+			--	Ex: http://twitter.com/friends/ids/bob.xml
+			--Returns: list of IDs
+		local
+			l_api_call: STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("friends/ids/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("friends/ids/" + a_screen_name.out + "." + format, Void)
+			else
+				l_api_call := twitter_url ("friends/ids." + format, Void)
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
 
-
---ids (followers)
---Returns an array of numeric IDs for every user the specified user is followed by.
---URL: http://twitter.com/followers/ids.format
---Formats: xml, json
---Method(s): GET
---Parameters:
---    * id.  Optional.  The ID or screen_name of the user to retrieve the friends ID list for.  Ex: http://twitter.com/followers/ids/bob.xml
---Returns: list of IDs
+	followers_ids (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Returns an array of numeric IDs for every user the specified user is followed by.
+			--URL: http://twitter.com/followers/ids.format
+			--Formats: xml, json
+			--Method(s): GET
+			--Parameters:
+			--    * id.  Optional.  The ID or screen_name of the user to retrieve the friends ID list for.
+			--	Ex: http://twitter.com/followers/ids/bob.xml
+			--Returns: list of IDs
+		local
+			l_api_call: STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("followers/ids/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("followers/ids/" + a_screen_name.out + "." + format, Void)
+			else
+				l_api_call := twitter_url ("followers/ids." + format, Void)
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
 
 feature -- Twitter: Account Methods
 
@@ -430,19 +641,26 @@ feature -- Twitter: Account Methods
 			Result := update_profile (Void, Void, Void, a_location, Void)
 		end
 
-
---	function updateDeliveryDevice($format, $device) {
---		$api_call = sprintf("http://twitter.com/account/update_delivery_device.%s?device=%s", $format, $device);
---		return $this->APICall($api_call, true, true);
---	}
---update_delivery_device
---Sets which device Twitter delivers updates to for the authenticating user.  Sending none as the device parameter will disable IM or SMS updates.
---URL: http://twitter.com/account/update_delivery_device.format
---Formats: xml, json
---Method(s): POST
---Parameters:
---    * device.  Required.  Must be one of: sms, im, none.  Ex: http://twitter.com/account/update_delivery_device.xml?device=im
---Returns: basic user information element		
+	update_delivery_device (a_device: STRING): like api_call
+			--update_delivery_device
+			--Sets which device Twitter delivers updates to for the authenticating user.  Sending none as the device parameter will disable IM or SMS updates.
+			--URL: http://twitter.com/account/update_delivery_device.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * device.  Required.  Must be one of: sms, im, none.
+			--		Ex: http://twitter.com/account/update_delivery_device.xml?device=im
+			--Returns: basic user information element		
+		require
+			valid_device: a_device.is_case_insensitive_equal ("sms")
+							or a_device.is_case_insensitive_equal ("im")
+							or a_device.is_case_insensitive_equal ("none")
+		local
+			l_api_call: STRING
+		do
+			l_api_call := twitter_url ("account/update_delivery_device." + format, <<["device", a_device]>>)
+			Result := api_call_with_details (l_api_call, True, True)
+		end
 
 	update_profile (a_name, a_email, a_url, a_location, a_description: detachable STRING): STRING
 		local
@@ -470,36 +688,75 @@ feature -- Twitter: Account Methods
 			Result := api_call_with_details (l_api_call, True, True)
 		end
 
---update_profile_colors
---Sets one or more hex values that control the color scheme of the authenticating user's profile page on twitter.com.  These values are also returned in the /users/show API method.
---URL: http://twitter.com/account/update_profile_colors.format
---Formats: xml, json
---Method(s): POST
---Parameters: one or more of the following parameters must be present.  Each parameter's value must be a valid hexidecimal value, and may be either three or six characters (ex: #fff or #ffffff).
---    * profile_background_color.  Optional.
---    * profile_text_color.  Optional.
---    * profile_link_color.  Optional.
---    * profile_sidebar_fill_color.  Optional.
---    * profile_sidebar_border_color.  Optional.
---Returns: extended user information element
+	update_profile_colors (a_profile_background_color, a_profile_text_color, a_profile_link_color,
+					a_profile_sidebar_fill_color, a_profile_sidebar_border_color: detachable STRING): like api_call
+			--Sets one or more hex values that control the color scheme of the authenticating user's profile page on twitter.com.  These values are also returned in the /users/show API method.
+			--URL: http://twitter.com/account/update_profile_colors.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters: one or more of the following parameters must be present.
+			--	Each parameter's value must be a valid hexidecimal value, and may be either three or six characters (ex: #fff or #ffffff).
+			--    * profile_background_color.  Optional.
+			--    * profile_text_color.  Optional.
+			--    * profile_link_color.  Optional.
+			--    * profile_sidebar_fill_color.  Optional.
+			--    * profile_sidebar_border_color.  Optional.
+			--Returns: extended user information element
+		local
+			l_api_call: STRING
+		do
+			l_api_call := twitter_url ("account/update_profile_colors." + format, Void)
+			to_implement ("FIXME")
+			if a_profile_background_color /= Void then
+				append_parameters_to_url (l_api_call, <<["profile_background_color", a_profile_background_color]>>)
+			end
+			if a_profile_text_color /= Void then
+				append_parameters_to_url (l_api_call, <<["profile_text_color", a_profile_text_color]>>)
+			end
+			if a_profile_link_color /= Void then
+				append_parameters_to_url (l_api_call, <<["profile_link_color", a_profile_link_color]>>)
+			end
 
---update_profile_image
---Updates the authenticating user's profile image.  Expects raw multipart data, not a URL to an image.
---URL: http://twitter.com/account/update_profile_image.format
---Formats: xml, json
---Method(s): POST
---Parameters:
---    * image.  Required.  Must be a valid GIF, JPG, or PNG image of less than 700 kilobytes in size.  Images with width larger than 500 pixels will be scaled down.
---Returns: extended user information element
+			if a_profile_sidebar_fill_color /= Void then
+				append_parameters_to_url (l_api_call, <<["profile_sidebar_fill_color", a_profile_sidebar_fill_color]>>)
+			end
+			if a_profile_sidebar_border_color /= Void then
+				append_parameters_to_url (l_api_call, <<["profile_sidebar_border_color", a_profile_sidebar_border_color]>>)
+			end
 
---update_profile_background_image
---Updates the authenticating user's profile background image.  Expects raw multipart data, not a URL to an image.
---URL: http://twitter.com/account/update_profile_background_image.format
---Formats: xml, json
---Method(s): POST
---Parameters:
---    * image.  Required.  Must be a valid GIF, JPG, or PNG image of less than 800 kilobytes in size.  Images with width larger than 2048 pixels will be scaled down.
---Returns: extended user information element
+			Result := api_call_with_details (l_api_call, True, True)
+		end
+
+	update_profile_image (a_image: STRING): like api_call
+			--Updates the authenticating user's profile image.  Expects raw multipart data, not a URL to an image.
+			--URL: http://twitter.com/account/update_profile_image.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * image.  Required.  Must be a valid GIF, JPG, or PNG image of less than 700 kilobytes in size.
+			--		Images with width larger than 500 pixels will be scaled down.
+			--Returns: extended user information element
+		require
+			a_image_required: a_image /= Void
+		do
+			to_implement ("FIXME")
+			Result := "FIXME"
+		end
+
+	update_profile_background_image (a_image: STRING): like api_call
+			--Updates the authenticating user's profile background image.  Expects raw multipart data, not a URL to an image.
+			--URL: http://twitter.com/account/update_profile_background_image.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * image.  Required.  Must be a valid GIF, JPG, or PNG image of less than 800 kilobytes in size.  Images with width larger than 2048 pixels will be scaled down.
+			--Returns: extended user information element
+		require
+			a_image_required: a_image /= Void
+		do
+			to_implement ("FIXME")
+			Result := "FIXME"
+		end
 
 	rate_limit_status: STRING
 			--rate_limit_status
@@ -508,77 +765,209 @@ feature -- Twitter: Account Methods
 			--Formats: xml, json
 			--Method(s): GET
 			--Parameters: none
-		local
 		do
 			Result := api_call (twitter_url ("account/rate_limit_status." + format, Void))
 		end
 
---	function rateLimitStatus($format) {
---		$api_call = sprintf("http://twitter.com/account/rate_limit_status.%s", $format);
---		return $this->APICall($api_call, true);
---	}
---	
---	function getArchive($format, $page = 1) {
---		$api_call = sprintf("http://twitter.com/account/archive.%s", $format);
---		if ($page > 1) {
---			$api_call .= sprintf("?page=%d", $page);
---		}
---		return $this->APICall($api_call, true);
---	}
---	
---	function getFavorites($format, $id = NULL, $page = 1) {
---		if ($id == NULL) {
---			$api_call = sprintf("http://twitter.com/favorites.%s", $format);
---		}
---		else {
---			$api_call = sprintf("http://twitter.com/favorites/%s.%s", $id, $format);
---		}
---		if ($page > 1) {
---			$api_call .= sprintf("?page=%d", $page);
---		}
---		return $this->APICall($api_call, true);
---	}
---	
---	function createFavorite($format, $id) {
---		$api_call = sprintf("http://twitter.com/favorites/create/%d.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
---	
---	function destroyFavorite($format, $id) {
---		$api_call = sprintf("http://twitter.com/favorites/destroy/%d.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
---	
---	function follow($format, $id) {
---		$api_call = sprintf("http://twitter.com/notifications/follow/%d.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
---	
---	function leave($format, $id) {
---		$api_call = sprintf("http://twitter.com/notifications/leave/%d.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
---	
---	function createBlock($format, $id) {
---		$api_call = sprintf("http://twitter.com/blocks/create/%d.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
---	
---	function destroyBlock($format, $id) {
---		$api_call = sprintf("http://twitter.com/blocks/destroy/%d.%s", $id, $format);
---		return $this->APICall($api_call, true, true);
---	}
---	
---	function test($format) {
---		$api_call = sprintf("http://twitter.com/help/test.%s", $format);
---		return $this->APICall($api_call, true);
---	}
---	
---	function downtimeSchedule($format) {
---		$api_call = sprintf("http://twitter.com/help/downtime_schedule.%s", $format);
---		return $this->APICall($api_call, true);
---	}
---	
+feature -- Twitter: favorite Methods
+
+	favorites (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): like api_call
+			--Returns the 20 most recent favorite statuses for the authenticating user or user specified by the ID parameter in the requested format.
+			--URL: http://twitter.com/favorites.format
+			--Formats: xml, json, rss, atom
+			--Method(s): GET
+			--Parameters:
+			--    * id.  Optional.  The ID or screen name of the user for whom to request a list of favorite statuses.
+			--		Ex: http://twitter.com/favorites/bob.json or http://twitter.com/favorites/bob.rss
+			--    * page.  Optional. Retrieves the 20 next most recent favorite statuses.
+			--		Ex: http://twitter.com/favorites.xml?page=3
+			--Returns: list of status elements	
+		local
+			l_api_call: STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("favorites/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("favorites/" + a_screen_name.out + "." + format, Void)
+			else
+				l_api_call := twitter_url ("favorites." + format, Void)
+			end
+			if a_page > 0 then
+				append_parameters_to_url (l_api_call, <<["page", a_page.out]>>)
+			end
+			Result := api_call_with_details (l_api_call, True, False)
+		end
+
+	create_favorite (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Favorites the status specified in the ID parameter as the authenticating user.  Returns the favorite status when successful.
+			--URL: http://twitter.com/favorites/create/id.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * id.  Required.  The ID of the status to favorite.
+			--		Ex: http://twitter.com/favorites/create/12345.json or http://twitter.com/favorites/create/45567.xml
+			--Returns: status element
+		local
+			l_api_call: detachable STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("favorites/create/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("favorites/create/" + a_screen_name.out + "." + format, Void)
+			else
+				check False end
+			end
+			if l_api_call /= Void then
+				Result := api_call_with_details (l_api_call, True, True)
+			else
+				create Result.make_empty
+			end
+		end
+
+	destroy_favorite (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Favorites the status specified in the ID parameter as the authenticating user.  Returns the favorite status when successful.
+			--URL: http://twitter.com/favorites/destroy/id.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * id.  Required.  The ID of the status to favorite.
+			--		Ex: http://twitter.com/favorites/destroy/12345.json or http://twitter.com/favorites/destroy/45567.xml
+			--Returns: status element
+		local
+			l_api_call: detachable STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("favorites/destroy/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("favorites/destroy/" + a_screen_name.out + "." + format, Void)
+			else
+				check False end
+			end
+			if l_api_call /= Void then
+				Result := api_call_with_details (l_api_call, True, True)
+			else
+				create Result.make_empty
+			end
+		end
+
+feature -- Twitter: Notification Methods
+
+	follow (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Enables notifications for updates from the specified user to the authenticating user.  Returns the specified user when successful.
+			--URL:http://twitter.com/notifications/follow/id.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * id.  Required.  The ID or screen name of the user to follow.
+			--		Ex: http://twitter.com/notifications/follow/12345.xml or http://twitter.com/notifications/follow/bob.json
+			--Returns: basic user information element
+		local
+			l_api_call: detachable STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("notifications/follow/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("notifications/follow/" + a_screen_name.out + "." + format, Void)
+			else
+				check False end
+			end
+			if l_api_call /= Void then
+				Result := api_call_with_details (l_api_call, True, True)
+			else
+				create Result.make_empty
+			end
+		end
+
+	leave (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Disables notifications for updates from the specified user to the authenticating user.  Returns the specified user when successful.
+			--URL: http://twitter.com/notifications/leave/id.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * id.  Required.  The ID or screen name of the user to leave.
+			--		Ex:  http://twitter.com/notifications/leave/12345.xml or http://twitter.com/notifications/leave/bob.json
+			--Returns: basic user information element	
+		local
+			l_api_call: detachable STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("notifications/leave/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("notifications/leave/" + a_screen_name.out + "." + format, Void)
+			else
+				check False end
+			end
+			if l_api_call /= Void then
+				Result := api_call_with_details (l_api_call, True, True)
+			else
+				create Result.make_empty
+			end
+		end
+
+
+feature -- Twitter: Block Methods
+
+	create_block (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Blocks the user specified in the ID parameter as the authenticating user.  Returns the blocked user in the requested format when successful.  You can find out more about blocking in the Twitter Support Knowledge Base.
+			--URL: http://twitter.com/blocks/create/id.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters:
+			--    * id.  Required.  The ID or screen_name of the user to block.  Ex: http://twitter.com/blocks/create/12345.json or http://twitter.com/blocks/create/bob.xml
+			--Returns: basic user information element
+		local
+			l_api_call: detachable STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("blocks/create/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("blocks/create/" + a_screen_name.out + "." + format, Void)
+			else
+				check False end
+			end
+			if l_api_call /= Void then
+				Result := api_call_with_details (l_api_call, True, True)
+			else
+				create Result.make_empty
+			end
+		end
+
+	destroy_block (a_id: INTEGER; a_screen_name: detachable STRING): like api_call
+			--Un-blocks the user specified in the ID parameter as the authenticating user.  Returns the un-blocked user in the requested format when successful.
+			--URL: http://twitter.com/blocks/destroy/id.format
+			--Formats: xml, json
+			--Method(s): POST, DELETE
+			--Parameters:
+			--    * id.  Required.  The ID or screen_name of the user to un-block.  Ex: http://twitter.com/blocks/destroy/12345.json or http://twitter.com/blocks/destroy/bob.xml
+			--Returns: basic user information element
+		local
+			l_api_call: detachable STRING
+		do
+			if a_id > 0 then
+				l_api_call := twitter_url ("blocks/destroy/" + a_id.out + "." + format, Void)
+			elseif a_screen_name /= Void then
+				l_api_call := twitter_url ("blocks/destroy/" + a_screen_name.out + "." + format, Void)
+			else
+				check False end
+			end
+			if l_api_call /= Void then
+				Result := api_call_with_details (l_api_call, True, True)
+			else
+				create Result.make_empty
+			end
+		end
+
+feature -- Twitter: Help Methods
+
+	test: like api_call
+			--Returns the string "ok" in the requested format with a 200 OK HTTP status code.			
+			-- URL: http://twitter.com/help/test.format
+			--Formats: xml, json
+			--Method(s): GET			
+		do
+			Result := api_call_with_details (twitter_url ("help/test." + format, Void), True, False)
+		end
+
 feature {NONE} -- Implementation
 
 	twitter_url (a_query: STRING; a_parameters: detachable ARRAY [detachable TUPLE [name: STRING; value: STRING]]): STRING

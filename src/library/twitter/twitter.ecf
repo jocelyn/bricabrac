@@ -5,7 +5,7 @@
 		<option warning="true" full_class_checking="true" syntax_level="1" >
 		</option>
 		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
-		<library name="curl" location="$ISE_LIBRARY\library\curl\curle.ecf" readonly="false"/>
+		<library name="curl" location="$ISE_LIBRARY\library\curl\curl.ecf" readonly="false"/>
 		<library name="json" location="json\lib\ejson\json.ecf" readonly="false"/>
 		<cluster name="twitter" location=".\" recursive="true" >
 			<file_rule>

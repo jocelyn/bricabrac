@@ -8,7 +8,7 @@ class
 	TWITTER_JSON
 
 inherit
-	REFACTORING_HELPER
+	TWITTER_I
 
 create
 	make,
@@ -43,8 +43,6 @@ feature -- Twitter: Status Methods
 
 	update_status (a_status: STRING; in_reply_to_status_id: INTEGER): detachable TWITTER_STATUS
 			-- Updates the authenticating user's status.
-		require
-			a_status_valid: a_status /= Void and then a_status.count <= 140
 		do
 			if attached twitter_api.update_status (a_status, in_reply_to_status_id) as s then
 				if attached parsed_json (s) as j then
@@ -185,9 +183,10 @@ feature -- Implementation: Factory
 
 feature -- Implementation
 
-	print_json_data (a_json_data: detachable JSON_VALUE)
+	print_last_json_data 
+			-- Print `last_json' data
 		do
-			internal_print_json_data (a_json_data, "  ")
+			internal_print_json_data (last_json, "  ")
 		end
 
 feature {NONE} -- Implementation
@@ -208,8 +207,6 @@ feature {NONE} -- Implementation
 
 	json_value (a_json_data: detachable JSON_VALUE; a_id: STRING): detachable JSON_VALUE
 		local
-			l_value: JSON_VALUE
-			j: JSON_PARSER
 			l_id: JSON_STRING
 			l_ids: LIST [STRING]
 		do
