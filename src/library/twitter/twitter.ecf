@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-4-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-4-0 http://www.eiffel.com/developers/xml/configuration-1-4-0.xsd" name="twitter" uuid="E159BF50-28AB-4060-93F6-3E810FC478F0" library_target="twitter">
+	<target name="twitter">
+		<root all_classes="true"/>
+		<option warning="true" full_class_checking="true" is_attached_by_default="true" is_void_safe="true" syntax_level="1" >
+		</option>
+		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
+		<library name="curl" location="$ISE_LIBRARY\library\curl\curl-safe.ecf" readonly="false"/>
+		<library name="json" location="json\lib\ejson\json-safe.ecf" readonly="false"/>
+		<cluster name="twitter" location=".\"/>
+	</target>
+</system>
