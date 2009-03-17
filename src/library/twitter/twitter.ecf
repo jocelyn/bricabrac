@@ -7,6 +7,13 @@
 		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
 		<library name="curl" location="$ISE_LIBRARY\library\curl\curl-safe.ecf" readonly="false"/>
 		<library name="json" location="json\lib\ejson\json-safe.ecf" readonly="false"/>
-		<cluster name="twitter" location=".\"/>
+		<cluster name="twitter" location=".\" recursive="true" >
+			<file_rule>
+				<exclude>/EIFGENs$</exclude>
+				<exclude>/.svn$</exclude>
+				<exclude>/CVS$</exclude>
+				<exclude>json/lib$</exclude>
+			</file_rule>
+		</cluster>
 	</target>
 </system>
