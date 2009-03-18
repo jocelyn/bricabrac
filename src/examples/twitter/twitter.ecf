@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-4-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-4-0 http://www.eiffel.com/developers/xml/configuration-1-4-0.xsd" name="twitter" uuid="B3449DB6-3854-4AEA-8EC0-4EECA35DAC17">
+	<target name="twitter">
+		<root class="TWITTER_APPLICATION" feature="make"/>
+		<option is_attached_by_default="true" is_void_safe="true">
+		</option>
+		<setting name="console_application" value="true"/>
+		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
+		<library name="twitter" location="..\..\library\twitter\twitter-safe.ecf" readonly="false"/>
+		<cluster name="app_twitter" location=".\">
+			<file_rule>
+				<exclude>/EIFGENs$</exclude>
+				<exclude>/.svn$</exclude>
+				<exclude>/CVS$</exclude>
+			</file_rule>
+		</cluster>
+	</target>
+</system>
