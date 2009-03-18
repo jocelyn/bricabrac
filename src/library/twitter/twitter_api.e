@@ -1188,11 +1188,13 @@ feature {NONE} -- Implementation
 feature -- Access: Encoding
 
 	urlencode (s: STRING): STRING
+			-- URL encode `s'
 		do
 			Result := s.string
 			Result.replace_substring_all ("#", "%%23")
-			Result.replace_substring_all ("%T", "%%09")
 			Result.replace_substring_all (" ", "%%20")
+			Result.replace_substring_all ("%T", "%%09")
+			Result.replace_substring_all ("%N", "%%0A")
 			Result.replace_substring_all ("/", "%%2F")
 			Result.replace_substring_all ("&", "%%26")
 			Result.replace_substring_all ("<", "%%3C")
@@ -1203,11 +1205,13 @@ feature -- Access: Encoding
 		end
 
 	urldecode (s: STRING): STRING
+			-- URL decode `s'
 		do
 			Result := s.string
 			Result.replace_substring_all ("%%23", "#")
 			Result.replace_substring_all ("%%20", " ")
 			Result.replace_substring_all ("%%09", "%T")
+			Result.replace_substring_all ("%%0A", "%N")
 			Result.replace_substring_all ("%%2F", "/")
 			Result.replace_substring_all ("%%26", "&")
 			Result.replace_substring_all ("%%3C", "<")
