@@ -1138,6 +1138,7 @@ feature {NONE} -- Implementation
 			l_curl_string: CURL_STRING
 			l_url: STRING
 			p: POINTER
+			a_data: CELL [detachable ANY]
 		do
 			l_url := a_api_url.string
 			if attached application_source as l_app_src then
@@ -1170,8 +1171,14 @@ feature {NONE} -- Implementation
 			end
 			l_result := curl_easy.perform (curl_handle)
 
-			http_status := curl_easy.getinfo (curl_handle, {CURL_INFO_CONSTANTS}.curlinfo_response_code)
-			http_status := l_result
+--| FIXME: not yet available in official Eiffel cURL (but soon)
+--			create a_data.put (Void)
+--			l_result := curl_easy.getinfo (curl_handle, {CURL_INFO_CONSTANTS}.curlinfo_response_code, a_data)
+--			if l_result = 0 and then attached {INTEGER} a_data.item as l_http_status then
+--				http_status := l_http_status
+--			else
+--				http_status := 0
+--			end
 
 			last_api_call := l_url
 			curl_easy.cleanup (curl_handle)

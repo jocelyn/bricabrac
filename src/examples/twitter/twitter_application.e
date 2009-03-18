@@ -8,7 +8,7 @@ class
 	TWITTER_APPLICATION
 
 inherit
-	ANY
+	ARGUMENTS
 
 create
 	make
@@ -28,6 +28,9 @@ feature {NONE} -- Initialization
 				pref := preferences (ask_new)
 --				create t.make (pref.login, pref.password)
 				create {TWITTER_JSON} t.make_with_source (pref.login, pref.password, "EiffelTwitter")
+				if attached t.test as l_test then
+					print (l_test)
+				end
 
 				if attached t.verify_credentials as l_user then
 					print ("Authentication succeed...%N")
