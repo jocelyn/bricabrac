@@ -6,7 +6,7 @@
 		</option>
 		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
 		<library name="curl" location="$ISE_LIBRARY\library\curl\curl-safe.ecf" readonly="false"/>
-		<library name="json" location="json\lib\ejson\json-safe.ecf" readonly="false"/>
+		<library name="json" location="json\lib\json-safe.ecf" readonly="false"/>
 		<cluster name="twitter" location=".\" recursive="true" >
 			<file_rule>
 				<exclude>/EIFGENs$</exclude>
