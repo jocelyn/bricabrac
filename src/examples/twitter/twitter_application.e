@@ -26,7 +26,6 @@ feature {NONE} -- Initialization
 		do
 			if retried <= 1 then
 				pref := preferences (ask_new)
---				create t.make (pref.login, pref.password)
 				create {TWITTER_JSON} t.make_with_source (pref.login, pref.password, "EiffelTwitter")
 				if attached t.test as l_test then
 					print (l_test)

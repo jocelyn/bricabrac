@@ -1138,7 +1138,7 @@ feature {NONE} -- Implementation
 			l_curl_string: CURL_STRING
 			l_url: STRING
 			p: POINTER
-			a_data: CELL [detachable ANY]
+--			a_data: CELL [detachable ANY]
 		do
 			l_url := a_api_url.string
 			if attached application_source as l_app_src then
