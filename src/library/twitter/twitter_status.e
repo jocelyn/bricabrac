@@ -7,12 +7,6 @@ note
 class
 	TWITTER_STATUS
 
-inherit
-	ANY
-		redefine
-			out
-		end
-
 feature -- Access
 
 	id: INTEGER
@@ -85,7 +79,7 @@ feature -- Access
 			end
 		end
 
-	out: STRING
+	full_out: STRING
 			-- <Precursor>
 		local
 			l_offset: STRING

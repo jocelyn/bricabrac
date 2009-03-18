@@ -271,7 +271,7 @@ feature -- Twitter: Status Methods
 			Result := api_call_with_details (l_api_call, True, False)
 		end
 
-	destroy (a_id: INTEGER): like api_call
+	destroy_status (a_id: INTEGER): like api_call
 			--Destroys the status specified by the required ID parameter.  The authenticating user must be the author of the specified status.
 			--URL: http://twitter.com/statuses/destroy/id.format
 			--Formats: xml, json
@@ -716,7 +716,6 @@ feature -- Twitter: Account Methods
 			l_api_call: STRING
 		do
 			l_api_call := twitter_url ("account/update_profile_colors." + format, Void)
-			to_implement ("FIXME")
 			if a_profile_background_color /= Void then
 				append_parameters_to_url (l_api_call, <<["profile_background_color", a_profile_background_color]>>)
 			end
@@ -1076,7 +1075,7 @@ feature {NONE} -- Implementation
 			Result := l_curl_string.string
 		end
 
-feature {NONE} -- Implementation
+feature -- Access: Encoding
 
 	urlencode (s: STRING): STRING
 		do
@@ -1112,9 +1111,10 @@ feature {NONE} -- Implementation
 	stripslashes (s: STRING): STRING
 		do
 			Result := s.string
-			Result.replace_substring_all ("\\%"", "\%"")
-			Result.replace_substring_all ("\\'", "\'")
-			Result.replace_substring_all ("\\\\'", "\\")
+			Result.replace_substring_all ("\%"", "%"")
+			Result.replace_substring_all ("\'", "'")
+			Result.replace_substring_all ("\/", "/")
+			Result.replace_substring_all ("\\", "\")
 		end
 
 	curl: CURL_EXTERNALS is

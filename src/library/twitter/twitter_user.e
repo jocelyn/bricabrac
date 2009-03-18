@@ -7,12 +7,6 @@ note
 class
 	TWITTER_USER
 
-inherit
-	ANY
-		redefine
-			out
-		end
-
 feature -- Access: Basic
 
 	id: INTEGER
@@ -112,29 +106,32 @@ feature -- Access
 
 	short_out: STRING
 			-- <Precursor>
+		local
+			n: detachable STRING
 		do
-			create Result.make_from_string ("USER: ")
-			if protected then
-				Result.append_string ("(%%) ")
-			end
-
-			Result.append_string ("id=")
+			create Result.make_from_string ("USER#")
 			Result.append_integer (id)
-			Result.append_string (" ")
 
-			if attached name as l_name then
-				Result.append_string ("name=")
-				Result.append_string (l_name)
-				Result.append_string (" ")
-			end
 			if attached screen_name as l_screen_name then
-				Result.append_string ("screen_name=")
-				Result.append_string (l_screen_name)
-				Result.append_string (" ")
+				n := l_screen_name.string
+			end
+			if attached name as l_name then
+				if n /= Void and then not n.same_string (l_name) then
+					n.prepend_string (l_name + " (")
+					n.append_string (")")
+				end
+			end
+			if n /= Void then
+				Result.append_string (" %"")
+				Result.append_string (n)
+				Result.append_string ("%"")
+			end
+			if protected then
+				Result.append_string (" +Protected")
 			end
 		end
 
-	out: STRING
+	full_out: STRING
 			-- <Precursor>
 		local
 			l_offset: STRING

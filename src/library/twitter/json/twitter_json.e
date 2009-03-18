@@ -32,17 +32,29 @@ feature -- Twitter: Status Methods
 
 	public_timeline: detachable LIST [TWITTER_STATUS]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.public_timeline as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_statuses (Void, j)
+				end
+			end
 		end
 
 	friends_timeline (a_since_date: detachable STRING; a_since_id: INTEGER; a_count, a_page: INTEGER): detachable LIST [TWITTER_STATUS]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.friends_timeline (a_since_date, a_since_id, a_count, a_page) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_statuses (Void, j)
+				end
+			end
 		end
 
 	user_timeline (a_id: INTEGER; a_screen_name: detachable STRING; a_since_date: detachable STRING; a_since_id: INTEGER; a_count, a_page: INTEGER): detachable LIST [TWITTER_STATUS]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.user_timeline (a_id, a_screen_name, a_since_date, a_since_id, a_count, a_page) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_statuses (Void, j)
+				end
+			end
 		end
 
 	status (a_id: INTEGER): detachable TWITTER_STATUS
@@ -51,7 +63,7 @@ feature -- Twitter: Status Methods
 		do
 			if attached twitter_api.show_status (a_id) as s then
 				if attached parsed_json (s) as j then
-					create Result
+					Result := twitter_status (Void, j)
 				end
 			end
 		end
@@ -77,7 +89,11 @@ feature -- Twitter: Status Methods
 			--    * since_id.  Optional.  Returns only statuses with an ID greater than (that is, more recent than) the specified ID.  Ex: http://twitter.com/statuses/replies.xml?since_id=12345
 			--Returns: list of status elements		
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.replies (a_since_date, a_since_id, a_page) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_statuses (Void, j)
+				end
+			end
 		end
 
 	destroy_status (a_id: INTEGER): detachable TWITTER_STATUS
@@ -89,34 +105,34 @@ feature -- Twitter: Status Methods
 			--    * id.  Required.  The ID of the status to destroy.  Ex: http://twitter.com/statuses/destroy/12345.json or http://twitter.com/statuses/destroy/23456.xml
 			--Returns: status element		
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.destroy_status (a_id) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_status (Void, j)
+				end
+			end
 		end
 
 feature -- Twitter: User Methods
 
 	friends (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): detachable LIST [TWITTER_USER]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.friends (a_id, a_screen_name, a_page) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_users (Void, j)
+				end
+			end
 		end
 
 	followers (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): detachable LIST [TWITTER_USER]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.followers (a_id, a_screen_name, a_page) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_users (Void, j)
+				end
+			end
 		end
 
 	user (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
-			--Returns extended information of a given user, specified by ID or screen name as per the required id parameter below.  This information includes design settings, so third party developers can theme their widgets according to a given user's preferences. You must be properly authenticated to request the page of a protected user.
-			--URL: http://twitter.com/users/show/id.format
-			--Formats: xml, json
-			--Method(s): GET
-			--Parameters:
-			--One of the following is required:
-			--    * id.  The ID or screen name of a user.
-			--		Ex: http://twitter.com/users/show/12345.json
-			--		or http://twitter.com/users/show/bob.xml
-			--    * user_id. May be used in place of "id" parameter above. The user id of a user. Ex: http://twitter.com/users/show.xml?user_id=12345
-			--    * screen_name. May be used in place of "id" parameter above. The screen name of a user. Ex: http://twitter.com/users/show.xml?screen_name=bob
-			--Returns: extended user information element
 		do
 			if attached twitter_api.show_user (a_id, a_screen_name) as s then
 				if attached parsed_json (s) as j then
@@ -129,12 +145,20 @@ feature -- Twitter: Direct Message Methods
 
 	direct_messages (a_since_date: detachable STRING; a_since_id: INTEGER; a_page: INTEGER): detachable LIST [TWITTER_MESSAGE]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.direct_messages (a_since_date, a_since_id, a_page) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_messages (Void, j)
+				end
+			end
 		end
 
 	sent_messages (a_since_date: detachable STRING; a_since_id: INTEGER; a_page: INTEGER): detachable LIST [TWITTER_MESSAGE]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.sent_messages (a_since_date, a_since_id, a_page) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_messages (Void, j)
+				end
+			end
 		end
 
 	new_message (a_user: STRING; a_text: STRING): detachable TWITTER_MESSAGE
@@ -148,25 +172,41 @@ feature -- Twitter: Direct Message Methods
 
 	destroy_message (a_id: INTEGER): detachable LIST [TWITTER_MESSAGE]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.destroy_message (a_id) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_messages (Void, j)
+				end
+			end
 		end
 
 feature -- Twitter: Friendship Methods
 
 	create_friendship (a_id: INTEGER; a_screen_name: detachable STRING; a_follow: BOOLEAN): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.create_friendship (a_id, a_screen_name, a_follow) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 	destroy_friendship (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.destroy_friendship (a_id, a_screen_name) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 	friendship_exists (a_id: INTEGER; a_screen_name: detachable STRING;
 					b_id: INTEGER; b_screen_name: detachable STRING): BOOLEAN
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.friendship_exists (a_id, a_screen_name, b_id, b_screen_name) as s then
+				if attached parsed_json (s) as j then
+--					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 feature -- Twitter: Social Graph Methods
@@ -209,18 +249,31 @@ feature -- Twitter: Account Methods
 
 	update_delivery_device (a_device: STRING): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.update_delivery_device (a_device) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 	update_profile (a_name, a_email, a_url, a_location, a_description: detachable STRING): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.update_profile (a_name, a_email, a_url, a_location, a_description) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 	update_profile_colors (a_profile_background_color, a_profile_text_color, a_profile_link_color,
 					a_profile_sidebar_fill_color, a_profile_sidebar_border_color: detachable STRING): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.update_profile (a_profile_background_color, a_profile_text_color, a_profile_link_color,
+					a_profile_sidebar_fill_color, a_profile_sidebar_border_color) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 	update_profile_image (a_image: STRING): detachable TWITTER_USER
@@ -252,48 +305,76 @@ feature -- Twitter: favorite Methods
 
 	favorites (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): detachable LIST [TWITTER_STATUS]
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.favorites (a_id, a_screen_name, a_page) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_statuses (Void, j)
+				end
+			end
 		end
 
 	create_favorite (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_STATUS
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.create_favorite (a_id, a_screen_name) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_status (Void, j)
+				end
+			end
 		end
 
 	destroy_favorite (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_STATUS
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.destroy_favorite (a_id, a_screen_name) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_status (Void, j)
+				end
+			end
 		end
 
 feature -- Twitter: Notification Methods
 
 	follow (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.follow (a_id, a_screen_name) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 	leave (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.leave (a_id, a_screen_name) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 feature -- Twitter: Block Methods
 
 	create_block (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.create_block (a_id, a_screen_name) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 	destroy_block (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
 		do
-			to_implement ("not yet supported")
+			if attached twitter_api.destroy_block (a_id, a_screen_name) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_user (Void, j)
+				end
+			end
 		end
 
 feature -- Twitter: Help Methods
 
 	test: detachable STRING
 		do
-			to_implement ("not yet supported")
+			Result := twitter_api.test
 		end
 
 feature -- Implementation: Factory
@@ -337,7 +418,11 @@ feature -- Implementation: Factory
 			Result.set_created_at (string_value_from_json (a_json, "created_at"))
 			Result.set_name (string_value_from_json (a_json, "name"))
 			Result.set_screen_name (string_value_from_json (a_json, "screen_name"))
-			Result.set_location (string_value_from_json (a_json, "location"))
+			if attached string_value_from_json (a_json, "location") as s then
+				Result.set_location (twitter_api.stripslashes (s))
+			else
+				Result.set_location (Void)
+			end
 			Result.set_description (string_value_from_json (a_json, "description"))
 			Result.set_profile_image_url (string_value_from_json (a_json, "profile_image_url"))
 			Result.set_url (string_value_from_json (a_json, "url"))
@@ -373,6 +458,63 @@ feature -- Implementation: Factory
 			end
 			if attached {JSON_OBJECT} json_value (a_json, "recipient") as l_recipient then
 				Result.set_recipient (twitter_user (Void, l_recipient))
+			end
+		end
+
+	twitter_statuses (a_statuses: detachable like twitter_statuses; a_json: JSON_VALUE): detachable LIST [TWITTER_STATUS]
+		require
+			a_json_attached: a_json /= Void
+		local
+			i: INTEGER
+		do
+			if attached {JSON_ARRAY} a_json as l_array then
+				from
+					create {ARRAYED_LIST [TWITTER_STATUS]} Result.make (l_array.count)
+					i := 1
+				until
+					i > l_array.count
+				loop
+					Result.force (twitter_status (Void, l_array.i_th (i)))
+					i := i + 1
+				end
+			end
+		end
+
+	twitter_users (a_users: detachable like twitter_users; a_json: JSON_VALUE): detachable LIST [TWITTER_USER]
+		require
+			a_json_attached: a_json /= Void
+		local
+			i: INTEGER
+		do
+			if attached {JSON_ARRAY} a_json as l_array then
+				from
+					create {ARRAYED_LIST [TWITTER_USER]} Result.make (l_array.count)
+					i := 1
+				until
+					i > l_array.count
+				loop
+					Result.force (twitter_user (Void, l_array.i_th (i)))
+					i := i + 1
+				end
+			end
+		end
+
+	twitter_messages (a_messages: detachable like twitter_messages; a_json: JSON_VALUE): detachable LIST [TWITTER_MESSAGE]
+		require
+			a_json_attached: a_json /= Void
+		local
+			i: INTEGER
+		do
+			if attached {JSON_ARRAY} a_json as l_array then
+				from
+					create {ARRAYED_LIST [TWITTER_MESSAGE]} Result.make (l_array.count)
+					i := 1
+				until
+					i > l_array.count
+				loop
+					Result.force (twitter_message (Void, l_array.i_th (i)))
+					i := i + 1
+				end
 			end
 		end
 

@@ -115,6 +115,72 @@ feature -- Element change
 			recipient := a_recipient
 		end
 
+feature -- Access
+
+	short_out: STRING
+			-- <Precursor>
+		do
+			create Result.make_from_string ("MESSAGE: ")
+
+			Result.append_string ("id=")
+			Result.append_integer (id)
+
+			Result.append_string (" recipient=")
+			if attached recipient_screen_name as l_recipient_screen_name then
+				Result.append_string (l_recipient_screen_name)
+			end
+			if recipient_id > 0 then
+				Result.append_string ("(#")
+				Result.append_integer (recipient_id)
+				Result.append_string (")")
+			end
+
+			Result.append_string (" sender=")
+			if attached sender_screen_name as l_sender_screen_name then
+				Result.append_string (l_sender_screen_name)
+			end
+			if sender_id > 0 then
+				Result.append_string ("(#")
+				Result.append_integer (sender_id)
+				Result.append_string (")")
+			end
+
+			if attached created_at as l_created_at then
+				Result.append_string (" created_at=")
+				Result.append_string (l_created_at)
+			end
+		end
+
+	full_out: STRING
+			-- <Precursor>
+		local
+			l_offset: STRING
+		do
+			l_offset := "  "
+
+			create Result.make_from_string (short_out)
+			Result.append_string ("%N")
+
+			if attached text as l_text then
+				Result.append_string (l_offset)
+				Result.append_string ("text=")
+				Result.append_string (l_text)
+				Result.append_string ("%N")
+			end
+			if attached sender as l_sender then
+				Result.append_string (l_offset)
+				Result.append_string ("sender=")
+				Result.append_string (l_sender.short_out)
+				Result.append_string ("%N")
+			end
+			if attached recipient as l_recipient then
+				Result.append_string (l_offset)
+				Result.append_string ("recipient=")
+				Result.append_string (l_recipient.short_out)
+				Result.append_string ("%N")
+			end
+		end
+
 note
 	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
