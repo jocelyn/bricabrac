@@ -1,6 +1,6 @@
 note
 	description: "Summary description for {TWITTER_USER}."
-	author: ""
+	author: "Jocelyn Fiat"
 	date: "$Date$"
 	revision: "$Revision$"
 
@@ -383,4 +383,12 @@ feature -- Element change: Extended
 invariant
 	valid_description: attached description as d implies d.count <= 160
 
+note
+	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
+	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
+	source: "[
+			 Jocelyn Fiat
+			 Contact: jocelyn@eiffelsolution.com
+			 Website http://www.eiffelsolution.com/
+		]"
 end

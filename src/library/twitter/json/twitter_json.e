@@ -1,6 +1,6 @@
 note
 	description: "Summary description for {TWITTER_JSON}."
-	author: ""
+	author: "Jocelyn Fiat"
 	date: "$Date$"
 	revision: "$Revision$"
 
@@ -28,9 +28,24 @@ feature {NONE} -- Initialization
 			twitter_api.set_application_source (a_source)
 		end
 
-feature -- Twitter: Status Methods		
+feature -- Twitter: Status Methods
 
-	show_status (a_id: INTEGER): detachable TWITTER_STATUS
+	public_timeline: detachable LIST [TWITTER_STATUS]
+		do
+			to_implement ("not yet supported")
+		end
+
+	friends_timeline (a_since_date: detachable STRING; a_since_id: INTEGER; a_count, a_page: INTEGER): detachable LIST [TWITTER_STATUS]
+		do
+			to_implement ("not yet supported")
+		end
+
+	user_timeline (a_id: INTEGER; a_screen_name: detachable STRING; a_since_date: detachable STRING; a_since_id: INTEGER; a_count, a_page: INTEGER): detachable LIST [TWITTER_STATUS]
+		do
+			to_implement ("not yet supported")
+		end
+
+	status (a_id: INTEGER): detachable TWITTER_STATUS
 			-- single status, specified by the id parameter below.
 			-- The status's author will be returned inline.
 		do
@@ -51,9 +66,45 @@ feature -- Twitter: Status Methods
 			end
 		end
 
-feature -- Twitter: User Methods		
+	replies (a_since_date: detachable STRING; a_since_id: INTEGER; a_page: INTEGER): detachable LIST [TWITTER_STATUS]
+			--Returns the 20 most recent @replies (status updates prefixed with @username) for the authenticating user.
+			--URL: http://twitter.com/statuses/replies.format
+			--Formats: xml, json, rss, atom
+			--Method(s): GET
+			--Parameters:
+			--    * page.  Optional. Retrieves the 20 next most recent replies.  Ex: http://twitter.com/statuses/replies.xml?page=3
+			--    * since.  Optional.  Narrows the returned results to just those replies created after the specified HTTP-formatted date, up to 24 hours old.  The same behavior is available by setting an If-Modified-Since header in your HTTP request.  Ex: http://twitter.com/statuses/replies.xml?since=Tue%2C+27+Mar+2007+22%3A55%3A48+GMT
+			--    * since_id.  Optional.  Returns only statuses with an ID greater than (that is, more recent than) the specified ID.  Ex: http://twitter.com/statuses/replies.xml?since_id=12345
+			--Returns: list of status elements		
+		do
+			to_implement ("not yet supported")
+		end
 
-	show_user (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
+	destroy_status (a_id: INTEGER): detachable TWITTER_STATUS
+			--Destroys the status specified by the required ID parameter.  The authenticating user must be the author of the specified status.
+			--URL: http://twitter.com/statuses/destroy/id.format
+			--Formats: xml, json
+			--Method(s): POST, DELETE
+			--Parameters:
+			--    * id.  Required.  The ID of the status to destroy.  Ex: http://twitter.com/statuses/destroy/12345.json or http://twitter.com/statuses/destroy/23456.xml
+			--Returns: status element		
+		do
+			to_implement ("not yet supported")
+		end
+
+feature -- Twitter: User Methods
+
+	friends (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): detachable LIST [TWITTER_USER]
+		do
+			to_implement ("not yet supported")
+		end
+
+	followers (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): detachable LIST [TWITTER_USER]
+		do
+			to_implement ("not yet supported")
+		end
+
+	user (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
 			--Returns extended information of a given user, specified by ID or screen name as per the required id parameter below.  This information includes design settings, so third party developers can theme their widgets according to a given user's preferences. You must be properly authenticated to request the page of a protected user.
 			--URL: http://twitter.com/users/show/id.format
 			--Formats: xml, json
@@ -74,17 +125,65 @@ feature -- Twitter: User Methods
 			end
 		end
 
+feature -- Twitter: Direct Message Methods
+
+	direct_messages (a_since_date: detachable STRING; a_since_id: INTEGER; a_page: INTEGER): detachable LIST [TWITTER_MESSAGE]
+		do
+			to_implement ("not yet supported")
+		end
+
+	sent_messages (a_since_date: detachable STRING; a_since_id: INTEGER; a_page: INTEGER): detachable LIST [TWITTER_MESSAGE]
+		do
+			to_implement ("not yet supported")
+		end
+
+	new_message (a_user: STRING; a_text: STRING): detachable TWITTER_MESSAGE
+		do
+			if attached twitter_api.new_message (a_user, a_text) as s then
+				if attached parsed_json (s) as j then
+					Result := twitter_message (Void, j)
+				end
+			end
+		end
+
+	destroy_message (a_id: INTEGER): detachable LIST [TWITTER_MESSAGE]
+		do
+			to_implement ("not yet supported")
+		end
+
+feature -- Twitter: Friendship Methods
+
+	create_friendship (a_id: INTEGER; a_screen_name: detachable STRING; a_follow: BOOLEAN): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+	destroy_friendship (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+	friendship_exists (a_id: INTEGER; a_screen_name: detachable STRING;
+					b_id: INTEGER; b_screen_name: detachable STRING): BOOLEAN
+		do
+			to_implement ("not yet supported")
+		end
+
+feature -- Twitter: Social Graph Methods
+
+	friends_ids (a_id: INTEGER; a_screen_name: detachable STRING): detachable LIST [INTEGER]
+		do
+			to_implement ("not yet supported")
+		end
+
+	followers_ids (a_id: INTEGER; a_screen_name: detachable STRING): detachable LIST [INTEGER]
+		do
+			to_implement ("not yet supported")
+		end
+
 feature -- Twitter: Account Methods
 
 	verify_credentials: detachable TWITTER_USER
-			--Returns an HTTP 200 OK response code and a representation of the requesting user
-			-- if authentication was successful;
-			-- returns a 401 status code and an error message if not.
-			-- Use this method to test if supplied user credentials are valid.
-			--URL: http://twitter.com/account/verify_credentials.format
-			--Formats: xml, json
-			--Method(s): GET
-			--Returns: extended user information element
 		local
 			err: DEVELOPER_EXCEPTION
 		do
@@ -102,20 +201,41 @@ feature -- Twitter: Account Methods
 		end
 
 	end_session
-			--	function endSession() {
 		local
 			s: STRING
 		do
 			s := twitter_api.end_session
 		end
 
+	update_delivery_device (a_device: STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+	update_profile (a_name, a_email, a_url, a_location, a_description: detachable STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+	update_profile_colors (a_profile_background_color, a_profile_text_color, a_profile_link_color,
+					a_profile_sidebar_fill_color, a_profile_sidebar_border_color: detachable STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+	update_profile_image (a_image: STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+	update_profile_background_image (a_image: STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
 	rate_limit_status: detachable TUPLE [ reset_time_in_seconds: INTEGER; remaining_hits: INTEGER; hourly_limit: INTEGER; reset_time: detachable STRING]
-			-- Returns the remaining number of API requests available to the requesting user before the API limit is reached for the current hour. Calls to rate_limit_status do not count against the rate limit.  If authentication credentials are provided, the rate limit status for the authenticating user is returned.  Otherwise, the rate limit status for the requester's IP address is returned.
-			-- URL: http://twitter.com/account/rate_limit_status.format
-			-- Formats: xml, json
-			-- Method(s): GET
-			-- Parameters: none
-			-- Ex:{"reset_time_in_seconds":1237292716,"remaining_hits":100,"hourly_limit":100,"reset_time":"Tue Mar 17 12:25:16 +0000 2009"}			
+			-- <Precursor/>
+			--| Ex:{"reset_time_in_seconds":1237292716,"remaining_hits":100,"hourly_limit":100,"reset_time":"Tue Mar 17 12:25:16 +0000 2009"}			
 		do
 			if attached twitter_api.rate_limit_status as s then
 				if attached parsed_json (s) as j then
@@ -126,6 +246,54 @@ feature -- Twitter: Account Methods
 					Result.reset_time := string_value_from_json (j, "reset_time")
 				end
 			end
+		end
+
+feature -- Twitter: favorite Methods
+
+	favorites (a_id: INTEGER; a_screen_name: detachable STRING; a_page: INTEGER): detachable LIST [TWITTER_STATUS]
+		do
+			to_implement ("not yet supported")
+		end
+
+	create_favorite (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_STATUS
+		do
+			to_implement ("not yet supported")
+		end
+
+	destroy_favorite (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_STATUS
+		do
+			to_implement ("not yet supported")
+		end
+
+feature -- Twitter: Notification Methods
+
+	follow (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+	leave (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+feature -- Twitter: Block Methods
+
+	create_block (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+	destroy_block (a_id: INTEGER; a_screen_name: detachable STRING): detachable TWITTER_USER
+		do
+			to_implement ("not yet supported")
+		end
+
+feature -- Twitter: Help Methods
+
+	test: detachable STRING
+		do
+			to_implement ("not yet supported")
 		end
 
 feature -- Implementation: Factory
@@ -181,9 +349,36 @@ feature -- Implementation: Factory
 			end
 		end
 
+	twitter_message (a_message: detachable like twitter_message; a_json: JSON_VALUE): TWITTER_MESSAGE
+			-- Fill `a_message' from `a_json'
+		require
+			a_json_attached: a_json /= Void
+		do
+			if a_message /= Void then
+				Result := a_message
+			else
+				create Result
+			end
+
+			Result.set_id (integer_value_from_json (a_json, "id"))
+			Result.set_sender_id (integer_value_from_json (a_json, "sender_id"))
+			Result.set_text (string_value_from_json (a_json, "text"))
+			Result.set_recipient_id (integer_value_from_json (a_json, "recipient_id"))
+			Result.set_created_at (string_value_from_json (a_json, "created_at"))
+			Result.set_sender_screen_name (string_value_from_json (a_json, "sender_screen_name"))
+			Result.set_recipient_screen_name (string_value_from_json (a_json, "recipient_screen_name"))
+
+			if attached {JSON_OBJECT} json_value (a_json, "sender") as l_sender then
+				Result.set_sender (twitter_user (Void, l_sender))
+			end
+			if attached {JSON_OBJECT} json_value (a_json, "recipient") as l_recipient then
+				Result.set_recipient (twitter_user (Void, l_recipient))
+			end
+		end
+
 feature -- Implementation
 
-	print_last_json_data 
+	print_last_json_data
 			-- Print `last_json' data
 		do
 			internal_print_json_data (last_json, "  ")
@@ -295,4 +490,12 @@ feature {NONE} -- Implementation
 			end
 		end
 
+note
+	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
+	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
+	source: "[
+			 Jocelyn Fiat
+			 Contact: jocelyn@eiffelsolution.com
+			 Website http://www.eiffelsolution.com/
+		]"
 end

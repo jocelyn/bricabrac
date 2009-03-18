@@ -1,6 +1,6 @@
 note
 	description: "Summary description for {TWITTER}."
-	author: ""
+	author: "Jocelyn Fiat"
 	date: "$Date$"
 	revision: "$Revision$"
 
@@ -41,7 +41,6 @@ feature -- Access
 
 	format: STRING
 			-- Default format
-
 
 	http_status: INTEGER
 		--	/* Contains the last HTTP status code returned */
@@ -103,7 +102,7 @@ feature -- Element change
 
 feature -- Twitter: Status Methods
 
-	public_timelin: like api_call
+	public_timeline: like api_call
 			--Returns the 20 most recent statuses from non-protected users who have set a custom user icon.
 			--	Does not require authentication.
 			--	Note that the public timeline is cached for 60 seconds so requesting it more often than that is a waste of resources.
@@ -663,6 +662,17 @@ feature -- Twitter: Account Methods
 		end
 
 	update_profile (a_name, a_email, a_url, a_location, a_description: detachable STRING): STRING
+			--Sets values that users are able to set under the "Account" tab of their settings page. Only the parameters specified will be updated; to only update the "name" attribute, for example, only include that parameter in your request.
+			--URL: http://twitter.com/account/update_profile.format
+			--Formats: xml, json
+			--Method(s): POST
+			--Parameters: one or more of the following parameters must be present.  Each parameter's value should be a string.  See the individual parameter descriptions below for further constraints.
+			--    * name.  Optional. Maximum of 20 characters.
+			--    * email.  Optional. Maximum of 40 characters. Must be a valid email address.
+			--    * url.  Optional. Maximum of 100 characters. Will be prepended with "http://" if not present.
+			--    * location.  Optional. Maximum of 30 characters. The contents are not normalized or geocoded in any way.
+			--    * description.  Optional. Maximum of 160 characters.
+			--Returns: extended user information element	
 		local
 			l_api_call: STRING
 			l_parameters: detachable ARRAY [detachable TUPLE [STRING_8, STRING_8]]
@@ -1132,4 +1142,12 @@ feature {NONE} -- Constants
 
 	atom_id: STRING = "atom"
 
+note
+	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
+	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
+	source: "[
+			 Jocelyn Fiat
+			 Contact: jocelyn@eiffelsolution.com
+			 Website http://www.eiffelsolution.com/
+		]"
 end
