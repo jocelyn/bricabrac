@@ -211,6 +211,9 @@ feature -- Twitter: Direct Message Methods
 			--    * user.  Required.  The ID or screen name of the recipient user.
 			--    * text.  Required.  The text of your direct message.  Be sure to URL encode as necessary, and keep it under 140 characters.
 			--Return: direct message element
+		require
+			a_user_required: a_user /= Void
+			a_text_required: a_text /= Void and then a_text.count <= 140
 		deferred
 		end
 
