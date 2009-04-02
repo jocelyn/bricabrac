@@ -16,13 +16,13 @@ create
 
 feature {NONE} -- Initialization
 
-	make (a_username, a_password: STRING)
+	make (a_username, a_password: detachable STRING)
 		do
 			create twitter_api.make (a_username, a_password)
 			twitter_api.set_json_format
 		end
 
-	make_with_source (a_username, a_password: STRING; a_source: STRING)
+	make_with_source (a_username, a_password: detachable STRING; a_source: STRING)
 		do
 			make (a_username, a_password)
 			twitter_api.set_application_source (a_source)
@@ -236,6 +236,8 @@ feature -- Twitter: Account Methods
 					else
 						Result := twitter_user (Void, j)
 					end
+				else
+					print (s)
 				end
 			end
 		end
@@ -286,11 +288,11 @@ feature -- Twitter: Account Methods
 			to_implement ("not yet supported")
 		end
 
-	rate_limit_status: detachable TUPLE [ reset_time_in_seconds: INTEGER; remaining_hits: INTEGER; hourly_limit: INTEGER; reset_time: detachable STRING]
+	rate_limit_status (a_credentials_provided: BOOLEAN): detachable TUPLE [ reset_time_in_seconds: INTEGER; remaining_hits: INTEGER; hourly_limit: INTEGER; reset_time: detachable STRING]
 			-- <Precursor/>
 			--| Ex:{"reset_time_in_seconds":1237292716,"remaining_hits":100,"hourly_limit":100,"reset_time":"Tue Mar 17 12:25:16 +0000 2009"}			
 		do
-			if attached twitter_api.rate_limit_status as s then
+			if attached twitter_api.rate_limit_status (a_credentials_provided) as s then
 				if attached parsed_json (s) as j then
 					create Result
 					Result.reset_time_in_seconds := integer_value_from_json (j, "reset_time_in_seconds")

@@ -16,11 +16,11 @@ inherit
 
 feature {NONE} -- Initialization
 
-	make (a_username, a_password: STRING)
+	make (a_username, a_password: detachable STRING)
 		deferred
 		end
 
-	make_with_source (a_username, a_password: STRING; a_source: STRING)
+	make_with_source (a_username, a_password: detachable STRING; a_source: STRING)
 		deferred
 		end
 
@@ -397,8 +397,12 @@ feature -- Twitter: Account Methods
 		deferred
 		end
 
-	rate_limit_status: detachable TUPLE [ reset_time_in_seconds: INTEGER; remaining_hits: INTEGER; hourly_limit: INTEGER; reset_time: detachable STRING]
-			-- Returns the remaining number of API requests available to the requesting user before the API limit is reached for the current hour. Calls to rate_limit_status do not count against the rate limit.  If authentication credentials are provided, the rate limit status for the authenticating user is returned.  Otherwise, the rate limit status for the requester's IP address is returned.
+	rate_limit_status (a_credentials_provided: BOOLEAN): detachable TUPLE [ reset_time_in_seconds: INTEGER; remaining_hits: INTEGER; hourly_limit: INTEGER; reset_time: detachable STRING]
+			-- Returns the remaining number of API requests available to the requesting user before the API limit is reached for the current hour.
+			-- Calls to rate_limit_status do not count against the rate limit.
+			-- If authentication credentials are provided `a_credentials_provided',
+			--	 the rate limit status for the authenticating user is returned.
+			--   Otherwise, the rate limit status for the requester's IP address is returned.
 			-- URL: http://twitter.com/account/rate_limit_status.format
 			-- Formats: xml, json
 			-- Method(s): GET
