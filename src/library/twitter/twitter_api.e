@@ -1196,7 +1196,8 @@ feature {NONE} -- Implementation
 			curl_easy.setopt_curl_string (curl_handle, {CURL_OPT_CONSTANTS}.curlopt_writedata, l_curl_string)
 
 			debug ("twitter")
-				print ("TWITTER: " + l_url + "%N")
+				io.put_string ("TWITTER: " + l_url)
+				io.put_new_line
 			end
 			l_result := curl_easy.perform (curl_handle)
 
