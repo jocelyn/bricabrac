@@ -585,9 +585,9 @@ feature {NONE} -- Initialization
 
 feature {NONE} -- Implementation
 
-	site_login: STRING-- = "admin"
-	site_password: STRING-- = "p0xtok66"
-	site_domain: STRING-- = "livebox"
+	site_login: STRING
+	site_password: STRING
+	site_domain: STRING
 
 	curl: CURL_EXTERNALS is
 			-- cURL externals
