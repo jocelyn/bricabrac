@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-5-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-5-0 http://www.eiffel.com/developers/xml/configuration-1-5-0.xsd" name="eifgens_finder" uuid="57B2C2E0-B845-460E-A5D7-B2F735715D89">
+	<target name="eifgens_finder">
+		<root class="EIFGENS_FINDER" feature="make"/>
+		<setting name="console_application" value="true"/>
+		<library name="arg_parser" location="$ISE_LIBRARY\library\argument_parser\argument_parser.ecf" readonly="false"/>
+		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
+		<cluster name="eifgens_finder" location=".\"/>
+	</target>
+</system>
