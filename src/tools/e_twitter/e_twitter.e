@@ -109,7 +109,11 @@ feature {NONE} -- Initialization
 
 			create l_data.put ("")
 			if l_action /= Void then
-				if l_action.is_case_insensitive_equal ("update") then
+				if l_action.is_case_insensitive_equal ("info") then
+					if attached t.rate_limit_status (True) as rate then
+						print ("Remaining twitter hits: " + rate.remaining_hits.out + " / " + rate.hourly_limit.out + "%N")
+					end
+				elseif l_action.is_case_insensitive_equal ("update") then
 					get_input (l_data)
 					txt := l_data.item
 					if txt.count <= 140 then
@@ -161,6 +165,30 @@ feature {NONE} -- Initialization
 					else
 						usage ("Missing screen_name...%N")
 					end
+				elseif l_action.is_case_insensitive_equal ("updates") then
+					i := index_of_character_option ('a') + 2
+					if i <= argument_count and then attached argument (i) as l_user then
+						l_arg := l_user
+					end
+					if attached t.user_timeline (0, l_arg, Void, 0, 0, 0) as l_statuses then
+						print ("%NTimeline [" + l_arg + "]:%N")
+						display_full_statuses (l_statuses, "-----------------------------------")
+					end
+				elseif l_action.is_case_insensitive_equal ("friends_updates") then
+					if attached t.friends_timeline (Void, 0, 0, 0) as l_statuses then
+						print ("%NFriends Timeline:%N")
+						display_full_statuses (l_statuses, "-----------------------------------")
+					end
+				elseif l_action.is_case_insensitive_equal ("messages") then
+					if attached t.direct_messages (Void, 0, 0) as l_messages then
+						print ("%NMessages:%N")
+						display_full_messages (l_messages, "-----------------------------------")
+					end
+				elseif l_action.is_case_insensitive_equal ("sent_messages") then
+					if attached t.sent_messages (Void, 0, 0) as l_messages then
+						print ("%NSent messages:%N")
+						display_full_messages (l_messages, "-----------------------------------")
+					end
 				elseif l_action.is_case_insensitive_equal ("friends") then
 					i := index_of_character_option ('a') + 2
 					if i <= argument_count and then attached argument (i) as l_user then
@@ -198,6 +226,7 @@ feature {NONE} -- Initialization
 				get_input_from (a_data, f)
 				f.close
 			else
+				print ("Please enter text:%N")
 				get_input_from (a_data, io.input)
 			end
 		end
@@ -303,6 +332,21 @@ feature -- Access
 			end
 		end
 
+	display_full_statuses (a_list: LIST [TWITTER_STATUS]; a_sep: STRING)
+		do
+			print (a_sep + "%N")
+			from
+				a_list.start
+			until
+				a_list.after
+			loop
+				display_status (a_list.item, True)
+				print (a_sep + "%N")
+				a_list.forth
+			end
+		end
+
+
 	display_users (a_list: LIST [TWITTER_USER])
 		do
 			from
@@ -323,6 +367,20 @@ feature -- Access
 				a_list.after
 			loop
 				display_message (a_list.item, False)
+				a_list.forth
+			end
+		end
+
+	display_full_messages (a_list: LIST [TWITTER_MESSAGE]; a_sep: STRING)
+		do
+			print (a_sep + "%N")
+			from
+				a_list.start
+			until
+				a_list.after
+			loop
+				display_message (a_list.item, True)
+				print (a_sep + "%N")
 				a_list.forth
 			end
 		end
@@ -368,8 +426,8 @@ feature -- Change
 		end
 
 note
-	copyright: "Copyright (c) 1984-2009, Eiffel Software"
-	license: "GPL version 2 (see http://www.eiffel.com/licensing/gpl.txt)"
+	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
+	license: "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	licensing_options: "http://www.eiffel.com/licensing"
 	copying: "[
 			This file is part of Eiffel Software's Eiffel Development Environment.
@@ -392,10 +450,8 @@ note
 			Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 		]"
 	source: "[
-			Eiffel Software
-			5949 Hollister Ave., Goleta, CA 93117 USA
-			Telephone 805-685-1006, Fax 805-685-6869
-			Website http://www.eiffel.com
-			Customer support http://support.eiffel.com
+			 Jocelyn Fiat
+			 Contact: jocelyn@eiffelsolution.com
+			 Website http://www.eiffelsolution.com/
 		]"
 end
