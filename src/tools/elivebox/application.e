@@ -1,4 +1,4 @@
-indexing
+note
 	description : "elivebox application root class"
 	date        : "$Date$"
 	revision    : "$Revision$"
@@ -14,7 +14,7 @@ create
 
 feature {NONE} -- Initialization
 
-	make is
+	make
 			-- Run application.
 		local
 			requested_status, requested_easy_status: INTEGER
@@ -65,48 +65,58 @@ feature {NONE} -- Initialization
 			cfg: like wifi_config_for
 			st: BOOLEAN
 		do
-			if {l_wifi_cfg: like wifi_config_for} wifi_config_for (site_login, site_password, site_domain) then
-				cfg := l_wifi_cfg
-				print ("Wifi network canal=" + l_wifi_cfg.canal + " wifikey=%"" + l_wifi_cfg.wifikey + "%"")
-				if l_wifi_cfg.activated then
-					print (" is ON%N")
-				else
-					print (" is OFF%N")
-				end
-				toggle_requested := (l_wifi_cfg.activated and requested_status = -1) or (not l_wifi_cfg.activated and requested_status = 1)
-			else
-				failed := True
-				print ("Error: unable to get WiFi information.%N")
-			end
-			if not failed and cfg /= Void and toggle_requested then
-				if requested_status = 1 then
-					st := True
-				else
-					st := False
-				end
-				if {r: STRING} set_wifi_status_for (site_login, site_password, site_domain, cfg, st) then
-					print ("Wifi network: change status -> " + r)
-					io.put_new_line
-				else
-					failed := True
-					print ("Wifi network-> No information on wifi 'toggle' operation")
-					io.put_new_line
-				end
-				if {l_op_wifi_cfg: like wifi_config_for} wifi_config_for (site_login, site_password, site_domain) then
-					print ("Wifi network canal=" + l_op_wifi_cfg.canal + " wifikey=%"" + l_op_wifi_cfg.wifikey + "%"")
-					if l_op_wifi_cfg.activated then
-						print (" is now ON%N")
+			if
+				attached site_login as l_site_login and
+				attached site_password as l_site_password and
+				attached site_domain as l_site_domain
+			then
+				if attached wifi_config_for (l_site_login, l_site_password, l_site_domain) as l_wifi_cfg then
+					cfg := l_wifi_cfg
+					print ("Wifi network canal=" + l_wifi_cfg.canal + " wifikey=%"" + l_wifi_cfg.wifikey + "%"")
+					if l_wifi_cfg.activated then
+						print (" is ON%N")
 					else
-						print (" is now OFF%N")
+						print (" is OFF%N")
 					end
-					failed := (l_op_wifi_cfg.activated and requested_status = -1) or (not l_op_wifi_cfg.activated and requested_status = 1)
+					toggle_requested := (l_wifi_cfg.activated and requested_status = -1) or (not l_wifi_cfg.activated and requested_status = 1)
 				else
 					failed := True
-					print ("Wifi network: unable to get information%N")
+					print ("Error: unable to get WiFi information.%N")
 				end
-				if failed then
-					print ("Wifi network: operation failed !!!%N")
+				if not failed and cfg /= Void and toggle_requested then
+					if requested_status = 1 then
+						st := True
+					else
+						st := False
+					end
+					if attached set_wifi_status_for (l_site_login, l_site_password, l_site_domain, cfg, st) as r then
+						print ("Wifi network: change status -> " + r)
+						io.put_new_line
+					else
+						failed := True
+						print ("Wifi network-> No information on wifi 'toggle' operation")
+						io.put_new_line
+					end
+					if attached wifi_config_for (l_site_login, l_site_password, l_site_domain) as l_op_wifi_cfg then
+						print ("Wifi network canal=" + l_op_wifi_cfg.canal + " wifikey=%"" + l_op_wifi_cfg.wifikey + "%"")
+						if l_op_wifi_cfg.activated then
+							print (" is now ON%N")
+						else
+							print (" is now OFF%N")
+						end
+						failed := (l_op_wifi_cfg.activated and requested_status = -1) or (not l_op_wifi_cfg.activated and requested_status = 1)
+					else
+						failed := True
+						print ("Wifi network: unable to get information%N")
+					end
 				end
+			else
+				check has_login_pass_domain: False end
+				failed := True
+				print ("Error: missing login,password and domain parameters .%N")
+			end
+			if failed then
+				print ("Wifi network: operation failed !!!%N")
 			end
 		end
 
@@ -114,49 +124,59 @@ feature {NONE} -- Initialization
 		local
 			failed, toggle_easy_requested: BOOLEAN
 		do
-			if {l_easy_wifi_details: like easy_wifi_details} easy_wifi_details_for (site_login, site_password, site_domain) then
-				if l_easy_wifi_details.activated then
-					print ("Easy Wifi %"" + l_easy_wifi_details.ssid + "%" is activated%N")
-				else
-					print ("Easy Wifi %"" + l_easy_wifi_details.ssid + "%" is deactivated%N")
-				end
-				toggle_easy_requested := (l_easy_wifi_details.activated and requested_easy_status = -1) or (not l_easy_wifi_details.activated and requested_easy_status = 1)
-			else
-				failed := True
-				print ("Error: unable to get Easy WiFi information.%N")
-			end
-
-			if not failed and toggle_easy_requested then
-				if {s: STRING} toggle_easy_wifi_for (site_login, site_password, site_domain) then
-					print ("Change status -> " + s)
-					io.put_new_line
-				else
-					failed := True
-					print ("Easy Wifi -> No information on easy wifi 'toggle' operation")
-					io.put_new_line
-				end
-				if {l_op_easy_wifi_details: like easy_wifi_details} easy_wifi_details_for (site_login, site_password, site_domain) then
-					if l_op_easy_wifi_details.activated then
-						print ("Easy Wifi %"" + l_op_easy_wifi_details.ssid + "%" is now activated%N")
+			if
+				attached site_login as l_site_login and
+				attached site_password as l_site_password and
+				attached site_domain as l_site_domain
+			then
+				if attached easy_wifi_details_for (l_site_login, l_site_password, l_site_domain) as l_easy_wifi_details then
+					if l_easy_wifi_details.activated then
+						print ("Easy Wifi %"" + l_easy_wifi_details.ssid + "%" is activated%N")
 					else
-						print ("Easy Wifi %"" + l_op_easy_wifi_details.ssid + "%" is now deactivated%N")
+						print ("Easy Wifi %"" + l_easy_wifi_details.ssid + "%" is deactivated%N")
 					end
-					failed := (l_op_easy_wifi_details.activated and requested_easy_status = -1) or (not l_op_easy_wifi_details.activated and requested_easy_status = 1)
+					toggle_easy_requested := (l_easy_wifi_details.activated and requested_easy_status = -1) or (not l_easy_wifi_details.activated and requested_easy_status = 1)
 				else
 					failed := True
-					print ("Easy Wifi: unable to get details%N")
+					print ("Error: unable to get Easy WiFi information.%N")
 				end
-				if failed then
-					print ("Easy Wifi: operation failed !!!%N")
+				if not failed and toggle_easy_requested then
+					if attached toggle_easy_wifi_for (l_site_login, l_site_password, l_site_domain) as s then
+						print ("Change status -> " + s)
+						io.put_new_line
+					else
+						failed := True
+						print ("Easy Wifi -> No information on easy wifi 'toggle' operation")
+						io.put_new_line
+					end
+					if attached easy_wifi_details_for (l_site_login, l_site_password, l_site_domain) as l_op_easy_wifi_details then
+						if l_op_easy_wifi_details.activated then
+							print ("Easy Wifi %"" + l_op_easy_wifi_details.ssid + "%" is now activated%N")
+						else
+							print ("Easy Wifi %"" + l_op_easy_wifi_details.ssid + "%" is now deactivated%N")
+						end
+						failed := (l_op_easy_wifi_details.activated and requested_easy_status = -1) or (not l_op_easy_wifi_details.activated and requested_easy_status = 1)
+					else
+						failed := True
+						print ("Easy Wifi: unable to get details%N")
+					end
 				end
+			else
+				check has_login_pass_domain: False end
+				failed := True
+				print ("Error: missing login,password and domain parameters .%N")
+			end
+			if failed then
+				print ("Easy Wifi: operation failed !!!%N")
 			end
 		end
 
 	get_parameters
 		local
+			s: detachable STRING
 			ini_fn: STRING
 			f: RAW_FILE
-			vars: LINKED_LIST [like parameters_from_line]
+			vars: LINKED_LIST [attached like parameters_from_line]
 			m: BOOLEAN
 		do
 			create ini_fn.make_from_string (argument (0))
@@ -173,7 +193,7 @@ feature {NONE} -- Initialization
 				until
 					f.end_of_file or f.exhausted
 				loop
-					if {pars: like parameters_from_line} parameters_from_line (f.last_string) then
+					if attached parameters_from_line (f.last_string) as pars then
 						vars.extend (pars)
 						if site_login = Void and then pars.name.is_equal ("login") then
 							site_login := pars.value
@@ -193,18 +213,21 @@ feature {NONE} -- Initialization
 			end
 			if site_login = Void then
 				m := True
-				site_login := question ("Enter admin username", Void)
-				vars.extend (["login", site_login])
+				s := question ("Enter admin username", Void)
+				site_login := s
+				vars.extend (["login", s])
 			end
 			if site_password = Void then
 				m := True
-				site_password := question ("Enter admin password", Void)
-				vars.extend (["password", site_password])
+				s := question ("Enter admin password", Void)
+				site_password := s
+				vars.extend (["password", s])
 			end
 			if site_domain = Void then
 				m := True
-				site_domain := question ("Enter livebox's domain", "192.168.1.1")
-				vars.extend (["domain", site_domain])
+				s := question ("Enter livebox's domain", "192.168.1.1")
+				site_domain := s
+				vars.extend (["domain", s])
 			end
 			if m and then vars.count > 0 then
 				f.open_write
@@ -221,13 +244,13 @@ feature {NONE} -- Initialization
 			end
 		end
 
-	question (m: STRING; d: STRING): STRING
+	question (m: STRING; d: detachable STRING): STRING
 		local
-			s: STRING
+			s, l_reply: detachable STRING
 		do
 			from
 			until
-				Result /= Void
+				l_reply /= Void
 			loop
 				print (" - ")
 				print (m)
@@ -243,9 +266,12 @@ feature {NONE} -- Initialization
 					s := d
 				end
 				if s /= Void and then not s.is_empty then
-					Result := s
+					l_reply := s
 				end
 			end
+			Result := l_reply
+		ensure
+			result_attached: Result /= Void
 		end
 
 	parameter_key (n: STRING): INTEGER
@@ -253,8 +279,8 @@ feature {NONE} -- Initialization
 			i: INTEGER
 			u,l: INTEGER
 		do
-			l := 35
-			u := 125
+			l := crypt_lower
+			u := crypt_upper
 			from
 				i := 1
 			until
@@ -271,8 +297,8 @@ feature {NONE} -- Initialization
 			i, k, c: INTEGER
 			u,l: INTEGER
 		do
-			l := 35
-			u := 125
+			l := crypt_lower
+			u := crypt_upper
 			k := parameter_key (n)
 			Result := v
 			from
@@ -293,8 +319,8 @@ feature {NONE} -- Initialization
 			i, k, c: INTEGER
 			u,l: INTEGER
 		do
-			l := 35
-			u := 125
+			l := crypt_lower
+			u := crypt_upper
 			k := parameter_key (n)
 			Result := cv
 			from
@@ -312,9 +338,12 @@ feature {NONE} -- Initialization
 			end
 		end
 
-	parameters_to_line (pars: like parameters_from_line): STRING
+	crypt_lower: INTEGER = 32
+	crypt_upper: INTEGER = 126
+
+	parameters_to_line (pars: attached like parameters_from_line): STRING
 		local
-			n,v: STRING
+			n,v: detachable STRING
 		do
 			create Result.make (10)
 			n := pars.name
@@ -324,7 +353,7 @@ feature {NONE} -- Initialization
 			Result.append_string (crypted_parameter_value (n, v))
 		end
 
-	parameters_from_line (a_line: ?STRING): TUPLE [name: STRING; value: STRING]
+	parameters_from_line (a_line: detachable STRING): detachable TUPLE [name: STRING; value: STRING]
 		local
 			p: INTEGER
 			s: STRING
@@ -346,7 +375,7 @@ feature {NONE} -- Initialization
 			end
 		end
 
-	wifi_config_for (a_login, a_password, a_domain: STRING): like wifi_config
+	wifi_config_for (a_login, a_password, a_domain: STRING): detachable like wifi_config
 		local
 			l_result: INTEGER
 			l_curl_string: CURL_STRING
@@ -367,7 +396,7 @@ feature {NONE} -- Initialization
 		end
 
 
-	set_wifi_status_for (a_login, a_password, a_domain: STRING; a_config: like wifi_config; a_activated: BOOLEAN): STRING
+	set_wifi_status_for (a_login, a_password, a_domain: STRING; a_config: like wifi_config; a_activated: BOOLEAN): detachable STRING
 		local
 			l_result: INTEGER
 			l_curl_string: CURL_STRING
@@ -375,46 +404,51 @@ feature {NONE} -- Initialization
 			s: STRING
 			p,e: INTEGER
 		do
-			if a_config.activated /= a_activated then
+			if a_config /= Void and then a_config.activated /= a_activated then
 				l_url := "http://" + a_login + ":" + a_password + "@" + a_domain
-				l_url.append_string ("/wifiok.cgi?wifiChannel=" + a_config.canal + "&wifiKey63=" + a_config.wifikey + "&enblWifi=")
-				if a_activated then
-					l_url.append_string ("1")
-				else
-					l_url.append_string ("0")
-				end
+				if
+					attached a_config.canal as l_canal and
+					attached a_config.wifikey as l_wifikey
+				then
+					l_url.append_string ("/wifiok.cgi?wifiChannel=" + l_canal + "&wifiKey63=" + l_wifikey + "&enblWifi=")
+					if a_activated then
+						l_url.append_string ("1")
+					else
+						l_url.append_string ("0")
+					end
 
-				curl_handle := curl_easy.init
-				curl_easy.setopt_string (curl_handle, {CURL_OPT_CONSTANTS}.curlopt_url, l_url)
-				curl_easy.set_write_function (curl_handle)
-				create l_curl_string.make_empty
-				curl_easy.setopt_integer (curl_handle, {CURL_OPT_CONSTANTS}.curlopt_writedata, l_curl_string.object_id)
-				l_result := curl_easy.perform (curl_handle)
-				curl_easy.cleanup (curl_handle)
-				if not l_curl_string.is_empty then
-					s := l_curl_string.string
-					p := s.substring_index ("<form>", 1)
-					if p > 0 then
-						p := s.substring_index ("<b>", p + 1)
+					curl_handle := curl_easy.init
+					curl_easy.setopt_string (curl_handle, {CURL_OPT_CONSTANTS}.curlopt_url, l_url)
+					curl_easy.set_write_function (curl_handle)
+					create l_curl_string.make_empty
+					curl_easy.setopt_integer (curl_handle, {CURL_OPT_CONSTANTS}.curlopt_writedata, l_curl_string.object_id)
+					l_result := curl_easy.perform (curl_handle)
+					curl_easy.cleanup (curl_handle)
+					if not l_curl_string.is_empty then
+						s := l_curl_string.string
+						p := s.substring_index ("<form>", 1)
 						if p > 0 then
-							e := s.substring_index ("</b>", p + 1)
-							if e > p then
-								s := s.substring (p + 3, e - 1)
-								p := s.index_of ('<', 1)
-								if p > 0 then
-									s := s.substring (1, p - 1)
-									Result := s.twin
-									Result.replace_substring_all ("&eacute;", "e")
+							p := s.substring_index ("<b>", p + 1)
+							if p > 0 then
+								e := s.substring_index ("</b>", p + 1)
+								if e > p then
+									s := s.substring (p + 3, e - 1)
+									p := s.index_of ('<', 1)
+									if p > 0 then
+										s := s.substring (1, p - 1)
+										Result := s.string
+										Result.replace_substring_all ("&eacute;", "e")
+									end
 								end
 							end
 						end
 					end
+
 				end
 			end
 		end
 
-
-	easy_wifi_details_for (a_login, a_password, a_domain: STRING): like easy_wifi_details
+	easy_wifi_details_for (a_login, a_password, a_domain: STRING): detachable like easy_wifi_details
 		local
 			l_result: INTEGER
 			l_curl_string: CURL_STRING
@@ -434,7 +468,7 @@ feature {NONE} -- Initialization
 			end
 		end
 
-	toggle_easy_wifi_for (a_login, a_password, a_domain: STRING): STRING
+	toggle_easy_wifi_for (a_login, a_password, a_domain: STRING): detachable STRING
 		local
 			l_result: INTEGER
 			l_curl_string: CURL_STRING
@@ -463,7 +497,7 @@ feature {NONE} -- Initialization
 							p := s.index_of ('<', 1)
 							if p > 0 then
 								s := s.substring (1, p - 1)
-								Result := s.twin
+								Result := s.string
 								Result.replace_substring_all ("&eacute;", "e")
 							end
 						end
@@ -472,11 +506,13 @@ feature {NONE} -- Initialization
 			end
 		end
 
-	wifi_config (a_html: STRING): TUPLE [activated: BOOLEAN; canal: STRING; wifikey: STRING]
+	wifi_config (a_html: STRING): detachable TUPLE [activated: BOOLEAN; canal: STRING; wifikey: STRING]
 		local
 			p,e: INTEGER
 			s: STRING
 			r: like wifi_config
+			l_canal, l_wifikey: detachable STRING
+			l_activated, l_activated_set: BOOLEAN
 		do
 			create r
 			--| Canal
@@ -489,7 +525,7 @@ feature {NONE} -- Initialization
 					if p > 0 then
 						e := s.last_index_of (''', s.count)
 						if e > p then
-							r.canal := s.substring (p + 1, e - 1)
+							l_canal := s.substring (p + 1, e - 1)
 						end
 					end
 				end
@@ -506,11 +542,8 @@ feature {NONE} -- Initialization
 						e := s.last_index_of (''', s.count)
 						if e > p then
 							s := s.substring (p + 1, e - 1)
-							if s.is_case_insensitive_equal ("1") then
-								r.activated := True
-							else
-								r.activated := False
-							end
+							l_activated_set := True
+							l_activated := s.is_case_insensitive_equal ("1")
 						end
 					end
 				end
@@ -525,21 +558,26 @@ feature {NONE} -- Initialization
 						e := a_html.index_of (''', p + 1)
 						if e > p then
 							s := a_html.substring (p + 1, e - 1)
-							r.wifikey := s.twin
+							l_wifikey := s.string
 						end
 					end
 				end
 			end
-			Result := r
+			if l_canal /= Void and l_wifikey /= Void and l_activated_set then
+				Result := [l_activated, l_canal, l_wifikey]
+				check Result.activated = l_activated end
+				check Result.canal ~ l_canal end
+				check Result.wifikey ~ l_wifikey end
+			end
 		end
 
-	easy_wifi_details (a_html: STRING): TUPLE [activated: BOOLEAN; ssid: STRING]
+	easy_wifi_details (a_html: STRING): detachable TUPLE [activated: BOOLEAN; ssid: STRING]
 		local
 			p,e: INTEGER
 			s: STRING
-			r: like easy_wifi_details
+			l_ssid: detachable STRING
+			l_activated, l_activated_set: BOOLEAN
 		do
-			create r
 			p := a_html.substring_index ("wifiEssid.value", 1)
 			if p > 0 then
 				e := a_html.index_of (';', p)
@@ -549,7 +587,7 @@ feature {NONE} -- Initialization
 					if p > 0 then
 						e := s.last_index_of (''', s.count)
 						if e > p then
-							r.ssid := s.substring (p + 1, e - 1)
+							l_ssid := s.substring (p + 1, e - 1)
 						end
 					end
 				end
@@ -568,34 +606,37 @@ feature {NONE} -- Initialization
 							if e > p then
 								s := s.substring (p + 1, e - 1)
 --								print (s + "%N")
+								l_activated_set := True
 								if s.is_case_insensitive_equal ("Activer") then
-									r.activated := False
+									l_activated := False
 								else
 									check s.is_case_insensitive_equal ("D&eacute;sactiver")  end
-									r.activated := True
+									l_activated := True
 								end
 							end
 						end
 					end
 				end
 			end
-
-			Result := r
+			if l_activated_set and l_ssid /= Void then
+				Result := [l_activated, l_ssid]
+				check Result.ssid ~ l_ssid end
+			end
 		end
 
 feature {NONE} -- Implementation
 
-	site_login: STRING
-	site_password: STRING
-	site_domain: STRING
+	site_login: detachable STRING
+	site_password: detachable STRING
+	site_domain: detachable STRING
 
-	curl: CURL_EXTERNALS is
+	curl: CURL_EXTERNALS
 			-- cURL externals
 		once
 			create Result
 		end
 
-	curl_easy: CURL_EASY_EXTERNALS is
+	curl_easy: CURL_EASY_EXTERNALS
 			-- cURL easy externals
 		once
 			create Result
