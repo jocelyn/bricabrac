@@ -15,6 +15,7 @@ feature {NONE} -- Initialization
 	make (a_uuid: like uuid)
 		do
 			uuid := a_uuid
+			create logs.make_empty
 			create messages.make (100)
 			messages.compare_objects
 		end
@@ -26,6 +27,15 @@ feature -- Access
 	messages: HASH_TABLE [POP3_MESSAGE, STRING]
 
 	offline_messages: detachable ARRAYED_LIST [TUPLE [id: like counter; message: POP3_MESSAGE]]
+
+	messages_count: INTEGER
+		do
+			if attached messages as msgs then
+				Result := msgs.count
+			else
+				Result := -1
+			end
+		end
 
 	counter: NATURAL_64
 
@@ -48,6 +58,13 @@ feature -- Access
 			end
 		end
 
+	has_log: BOOLEAN
+		do
+			Result := attached logs as l and then not l.is_empty
+		end
+
+	logs: STRING_32
+
 	file_name: STRING
 		do
 			Result := uuid.string
@@ -59,6 +76,18 @@ feature -- Access
 		end
 
 feature -- Basic operations
+
+	reset_logs
+		do
+			logs.wipe_out
+		end
+
+	add_log (a_log: STRING_32)
+		require
+			a_log_attached: a_log /= Void
+		do
+			logs.prepend_string (a_log + "%N")
+		end
 
 	keep (a_lst: LIST [POP3_MESSAGE])
 		local

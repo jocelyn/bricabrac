@@ -61,19 +61,24 @@ feature {NONE} -- Initialization
 					create l_profile.make_from_location (n, l_username, l_password)
 					l_profile.enable
 					mail_checker_data.set_profile (l_profile)
-					check_profile (l_profile)
+					check_profile_and_report (l_profile)
 				end
 			else
-				i := command_line.index_of_character_option ('a')
+				i := command_line.index_of_word_option ("-export")
 				if i > 0 then
-					check_profiles (profiles)
+					export_profiles (profiles)
 				else
-					i := command_line.index_of_character_option ('c')
-					if i > 0 and then attached command_line.argument (i + 1) as l_uuid then
-						check_this_profile (l_uuid)
+					i := command_line.index_of_character_option ('a')
+					if i > 0 then
+						check_profiles (profiles, command_line.index_of_word_option ("-browser") > 0)
 					else
-						--| Default
-						manage_profiles (profiles)
+						i := command_line.index_of_character_option ('c')
+						if i > 0 and then attached command_line.argument (i + 1) as l_uuid then
+							check_this_profile (l_uuid)
+						else
+							--| Default
+							manage_profiles (profiles)
+						end
 					end
 				end
 			end
@@ -119,11 +124,11 @@ feature {NONE} -- Initialization
 		do
 			p := mail_checker_data.profile_for (a_uuid)
 			if p /= Void then
-				check_profile (p)
+				check_profile_and_report (p)
 			end
 		end
 
-	check_profiles (a_profiles: like profiles)
+	check_profiles (a_profiles: like profiles; open_index_file: BOOLEAN)
 		local
 			n: detachable STRING
 			l_profile: like profile
@@ -151,10 +156,35 @@ feature {NONE} -- Initialization
 				l_profile := profile (n)
 				if l_profile /= Void then
 					if f /= Void then
-						f.put_string ("<li><a href=%"" + l_profile.uuid + "/" + "index.html%">" + l_profile.location + "</a></li>")
+						f.put_string ("<li><a href=%"" + l_profile.uuid + "/" + "index.html%">")
+						f.put_string (l_profile.location)
+						f.put_string ("</a> : ")
 						f.flush
 					end
-					check_profile (l_profile)
+					if l_profile.enabled then
+						check_profile (l_profile)
+					end
+					if f /= Void then
+						if l_profile.enabled then
+							if attached data (l_profile.uuid) as l_data then
+								f.put_integer (l_data.messages_count)
+								f.put_string (" message(s)")
+								if l_data.counter > 0 then
+									f.put_string (" (")
+									f.put_natural_64 (l_data.counter)
+									f.put_string (" archived)")
+								end
+								if attached l_data.logs as l_logs and then not l_logs.is_empty then
+									f.put_string (" - <i>" + l_logs + "</i>")
+								end
+
+							end
+						else
+							f.put_string ("disabled")
+						end
+						f.put_string ("</li>")
+						f.flush
+					end
 				end
 				a_profiles.forth
 			end
@@ -163,9 +193,45 @@ feature {NONE} -- Initialization
 				f.put_string (html_footer (Void))
 				f.close
 			end
-			if attached get ("ComSpec") as l_comspec then
-				launch (l_comspec + " /C %"start " + fn + "%"")
+			if open_index_file then
+				if attached get ("ComSpec") as l_comspec then
+					launch (l_comspec + " /C %"start " + fn + "%"")
+				else
+					launch ("firefox %"" + fn + "%"")
+				end
 			end
+		end
+
+	export_profiles (a_profiles: like profiles)
+		require
+			a_profiles_attached: a_profiles /= Void
+		local
+			l_profile: detachable POP3_PROFILE
+			l_location: POP3_URL
+			s, n, q: detachable STRING
+			i,m: INTEGER
+			profs: ARRAY [POP3_PROFILE]
+		do
+			from
+				a_profiles.start
+			until
+				a_profiles.after
+			loop
+				n := a_profiles.item
+				l_profile := profile (n)
+				if l_profile /= Void then
+					print ("Profile: " + l_profile.location + " [" + n + "]%N")
+					print ("  Host    =" + l_profile.host)
+					if l_profile.port > 0 then
+						print (":" + l_profile.port.out)
+					end
+					print ("%N")
+					print ("  Username=" + l_profile.username + "%N")
+					print ("  Password=" + l_profile.password + "%N")
+				end
+				a_profiles.forth
+			end
+
 		end
 
 	manage_profiles (a_profiles: like profiles)
@@ -318,7 +384,7 @@ feature {NONE} -- Initialization
 					when 5 then
 						q := "cancel"
 					when 6 then
-						check_profile (a_prof)
+						check_profile_and_report (a_prof)
 					else
 						q := Void
 					end
@@ -367,7 +433,7 @@ feature {NONE} -- Initialization
 
 			print ("Password ")
 			if attached a_prof.password as p then
-				print ("(" + p + ")")
+				print ("(same password)")
 			end
 			print (": ")
 			io.read_line
@@ -401,6 +467,17 @@ feature {NONE} -- Initialization
 				end
 			end
 		end
+
+	check_profile_and_report (a_prof: POP3_PROFILE)
+		do
+			check_profile (a_prof)
+			if attached data (a_prof.uuid) as l_data then
+				if l_data.has_log then
+					print ("Logs: " + l_data.logs + "%N")
+				end
+			end
+		end
+
 
 	check_profile (a_prof: POP3_PROFILE)
 		do
@@ -464,6 +541,7 @@ feature {NONE} -- Initialization
 					-- update location
 				io.error.put_string ("%NCheck account " + a_url.location + "%N")
 				logger.put_string (a_url.location)
+				a_mail_account.reset_logs
 
 				create pop.make_with_address (a_url)
 				pop.set_read_mode
@@ -474,7 +552,9 @@ feature {NONE} -- Initialization
 						pop.authenticate
 					end
 				end
-				if not pop.error then
+				if pop.error then
+					a_mail_account.add_log ("Error during authentication: " + pop.error_text (pop.error_code))
+				else
 					if attached pop.statistic as l_stat then
 						l_msg_count := l_stat.nb
 					end
@@ -525,6 +605,9 @@ feature {NONE} -- Initialization
 								io.error.put_string ("  - downloading...%N")
 								l_mesg := mesgs.item
 								pop.get_message (l_mesg, nb_lines_to_retrieve)
+								if pop.error then
+									a_mail_account.add_log ("Error while fetching message")
+								end
 								pop.reset_error
 								if l_uid /= Void then
 									l_stored_messages.force (l_mesg, l_uid)
@@ -540,19 +623,25 @@ feature {NONE} -- Initialization
 	--					pop.query_top (3, 3)
 					else
 						pop.reset_error
+						a_mail_account.add_log ("Error while fetching list")
 					end
 				end
+				if pop.error then
+					a_mail_account.add_log ("Error occurred [" + pop.error_text (pop.error_code) + "]")
+				end
 				if pop.is_open then
-					if pop.transfer_initiated then
+					if pop.transfer_initiated and not pop.error then
 						pop.quit
 					end
 					pop.close
 				end
 			else
-
+				a_mail_account.add_log ("Error occurred [" + pop.error_text (pop.error_code) + "]")
 			end
 			if pop /= Void and then pop.is_open then
-				pop.quit
+				if pop.transfer_initiated and not pop.error then
+					pop.quit
+				end
 				pop.close
 			end
 		rescue

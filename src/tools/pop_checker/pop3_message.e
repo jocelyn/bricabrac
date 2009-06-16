@@ -65,6 +65,39 @@ feature -- Access
 			end
 		end
 
+	status: INTEGER
+
+	is_read: BOOLEAN
+		do
+			Result := status = 2
+		end
+
+	is_unread: BOOLEAN
+		do
+			Result := status = 1
+		end
+
+	is_new: BOOLEAN
+		do
+			Result := status = 0
+		end
+
+	set_new
+		do
+			status := 0
+		end
+
+	set_read
+		do
+			status := 2
+		end
+
+	set_unread
+		do
+			status := 1
+		end
+
+
 feature -- Access: header
 
 	header_subject: like header do Result := header ("Subject") end
