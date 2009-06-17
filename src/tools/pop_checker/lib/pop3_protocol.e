@@ -144,9 +144,11 @@ feature -- Status setting
 			l_socket: like main_socket
 		do
 			l_socket := main_socket
+--			l_socket.set_reuse_address
+			l_socket.set_nodelay
 			check l_socket_attached: l_socket /= Void end
 			if not error then
-				s := single_answer
+				s := single_answer_without_checking
 				if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 					transfer_initiated := True
 				else
@@ -166,16 +168,16 @@ feature -- Status setting
 			l_socket := main_socket
 			check l_socket_attached: l_socket /= Void end
 
-			l_socket.put_string ("USER " + address.username + "%N")
-			s := single_answer
+			socket_send_string (l_socket, "USER " + address.username + "%R%N")
+			s := single_answer_without_checking
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 			else
 				error_code := no_such_user
 			end
 
 			if not error then
-				l_socket.put_string ("PASS " + address.password + "%N")
-				s := single_answer
+				socket_send_string (l_socket, "PASS " + address.password + "%N")
+				s := single_answer_without_checking
 				if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 				else
 					error_code := access_denied
@@ -194,7 +196,7 @@ feature -- Status setting
 			l_socket := main_socket
 			check l_socket_attached: l_socket /= Void end
 
-			l_socket.put_string ("QUIT%N")
+			socket_send_string (l_socket, "QUIT%N")
 			s := single_answer
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 				debug
@@ -218,7 +220,7 @@ feature -- Status setting
 			l_socket := main_socket
 			check l_socket_attached: l_socket /= Void end
 
-			l_socket.put_string ("STAT%N")
+			socket_send_string (l_socket, "STAT%N")
 			s := single_answer
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 				s.remove_head (4)
@@ -246,7 +248,7 @@ feature -- Status setting
 			l_socket := main_socket
 			check l_socket_attached: l_socket /= Void end
 
-			l_socket.put_string ("NOOP%N")
+			socket_send_string (l_socket, "NOOP%N")
 			s := single_answer
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 				debug
@@ -268,7 +270,7 @@ feature -- Status setting
 			l_socket := main_socket
 			check l_socket_attached: l_socket /= Void end
 
-			l_socket.put_string ("RSET%N")
+			socket_send_string (l_socket, "RSET%N")
 			s := single_answer
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 				debug
@@ -294,9 +296,9 @@ feature -- Status setting
 			check l_socket_attached: l_socket /= Void end
 
 			if a_msg_number = 0 then
-				l_socket.put_string ("LIST%N")
+				socket_send_string (l_socket, "LIST%N")
 			else
-				l_socket.put_string ("LIST " + a_msg_number.out + "%N")
+				socket_send_string (l_socket, "LIST " + a_msg_number.out + "%N")
 			end
 			s := single_answer
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
@@ -350,9 +352,9 @@ feature -- Status setting
 			check l_socket_attached: l_socket /= Void end
 
 			if a_msg_number = 0 then
-				l_socket.put_string ("UIDL%N")
+				socket_send_string (l_socket, "UIDL%N")
 			else
-				l_socket.put_string ("UIDL " + a_msg_number.out + "%N")
+				socket_send_string (l_socket, "UIDL " + a_msg_number.out + "%N")
 			end
 			s := single_answer
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
@@ -402,7 +404,7 @@ feature -- Status setting
 			l_socket := main_socket
 			check l_socket_attached: l_socket /= Void end
 
-			l_socket.put_string ("RETR " + a_msg_number.out + "%N")
+			socket_send_string (l_socket, "RETR " + a_msg_number.out + "%N")
 			s := single_answer
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 				debug
@@ -437,11 +439,11 @@ feature -- Status setting
 			a_msg.reset_message
 
 			if a_nb_of_lines = 0 then
-				l_socket.put_string ("TOP " + a_msg.index.out + " 0%N")
+				socket_send_string (l_socket, "TOP " + a_msg.index.out + " 0%N")
 			elseif a_nb_of_lines < 0 then
-				l_socket.put_string ("RETR " + a_msg.index.out + "%N")
+				socket_send_string (l_socket, "RETR " + a_msg.index.out + "%N")
 			else
-				l_socket.put_string ("TOP " + a_msg.index.out + " " + a_nb_of_lines.out + "%N")
+				socket_send_string (l_socket, "TOP " + a_msg.index.out + " " + a_nb_of_lines.out + "%N")
 			end
 
 			s := single_answer
@@ -509,7 +511,7 @@ feature -- Status setting
 			l_socket := main_socket
 			check l_socket_attached: l_socket /= Void end
 
-			l_socket.put_string ("TOP " + a_msg_number.out + " " + a_nb_of_lines.out + "%N")
+			socket_send_string (l_socket, "TOP " + a_msg_number.out + " " + a_nb_of_lines.out + "%N")
 			s := single_answer
 			if s /= Void and then s.substring_index ("+OK", 1) = 1 then
 				debug
@@ -551,7 +553,7 @@ feature -- Status setting
 --			if not error then
 --				l_socket := main_socket
 --				check l_socket_attached: l_socket /= Void end
---				l_socket.put_string (str)
+--				socket_send_string (l_socket, str)
 --				debug ("eiffelnet")
 --					Io.error.put_string (str)
 --				end
@@ -575,6 +577,15 @@ feature -- Status setting
 		end
 
 feature {NONE} -- Implementation
+
+	socket_send_string (a_socket: NETWORK_SOCKET; a_string: STRING)
+			-- Send `a_string' into `a_socket'
+		do
+			debug ("pop")
+				print ("SEND:" + a_string)
+			end
+			a_socket.put_string (a_string)
+		end
 
 	remove_trailing_r (s: STRING)
 		do
@@ -670,17 +681,32 @@ feature {NONE} -- Implementation
 			end
 		end
 
+	single_answer_without_checking: detachable STRING
+		do
+			Result := impl_single_answer (False)
+		end
+
 	single_answer: detachable STRING
+		do
+			Result := impl_single_answer (True)
+		end
+
+	impl_single_answer (a_check: BOOLEAN): detachable STRING
 		local
 			l_socket: like main_socket
 		do
 			l_socket := main_socket
 			check l_socket /= Void end
 			if not error then
-				check_socket (l_socket, Read_only)
+				if a_check then
+					check_socket (l_socket, Read_only)
+				end
 				if not error then
 					l_socket.read_line
 					Result := l_socket.last_string.string
+					debug ("pop")
+						print ("RECV:" + Result + "%N")
+					end
 					remove_trailing_r (Result)
 				end
 			end
