@@ -1,0 +1,40 @@
+body {
+	margin: 0;
+}
+ a { text-decoration: none; }
+ .account, .account a { 
+			padding: 20px; 
+	 		margin: 0; 
+	 		font-weight: bold;
+			border: dotted 1px #00f; 
+			background-color: #009; 
+			color: #fff; 
+		}
+  .message { 
+	  border: solid 1px #ddd; 
+	  margin: 0 10px 1px 10px;
+	  padding: 0 3px 3px 3px;
+  	}
+  div.message:hover { 
+	  border: solid 1px #00f; 
+	  background-color: #ccf;
+  	}
+ .line { font-size: 75%; padding-top: 2px; }
+ .header { font-style: italic; color: #999; }
+ .header-opt { font-style: italic; color: #999; }
+ .msubject {font-weight: bold; color: #00a }
+ .mfrom {color: #090; }
+ .mdate {font-style: italic; color: #600; }
+ .content {color: #000; }
+ .jq {color: #F00; border: solid 2px #f00; }
+ #pop {
+	 display: none; 
+	 position: absolute;
+	 margin: 0 auto;
+	 top: 100px; left: 100px; right: 100px;
+	 border: solid 2px #00f;
+	 background-color: #ccccff;
+ }
+ #popb {
+	 margin-left: 50px;
+ }

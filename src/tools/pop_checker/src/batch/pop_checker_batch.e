@@ -5,7 +5,7 @@ indexing
 	revision    : "$Revision$"
 
 class
-	POP_CHECKER_APPLICATION
+	POP_CHECKER_BATCH
 
 inherit
 	EXECUTION_ENVIRONMENT
@@ -47,15 +47,27 @@ feature {NONE} -- Initialization
 				end
 				if n /= Void and then attached (create {POP3_URL}.make (n)) as l_pop3_location and then l_pop3_location.is_valid (False) then
 					io.put_string ("Location: " + n + "%N")
-					l_username := l_pop3_location.username
-					if l_username.is_empty then
+					i := command_line.index_of_word_option ("-username")
+					if i > 0 then
+						l_username := command_line.argument (i + 1)
+					end
+					if l_username = Void or else l_username.is_empty then
+						l_username := l_pop3_location.username
+					end
+					if l_username = Void or else l_username.is_empty then
 						io.put_string ("Username?")
 						io.read_line
 						l_username := io.last_string.string
 					end
-					io.put_string ("Password?")
-					io.read_line
-					l_password := io.last_string.string
+					i := command_line.index_of_word_option ("-password")
+					if i > 0 then
+						l_password := command_line.argument (i + 1)
+					end
+					if l_password = Void or else l_password.is_empty then
+						io.put_string ("Password?")
+						io.read_line
+						l_password := io.last_string.string
+					end
 
 					check not l_username.is_empty and not l_password.is_empty end
 					create l_profile.make_from_location (n, l_username, l_password)
@@ -228,6 +240,10 @@ feature {NONE} -- Initialization
 					print ("%N")
 					print ("  Username=" + l_profile.username + "%N")
 					print ("  Password=" + l_profile.password + "%N")
+					print ("  -add " + l_profile.location
+							+ " --username " + l_profile.username
+							+ " --password " + l_profile.password
+							+ "%N")
 				end
 				a_profiles.forth
 			end
@@ -597,7 +613,10 @@ feature {NONE} -- Initialization
 							if l_uid /= Void and then l_stored_messages.has_key (l_uid) then
 								l_mesg := l_stored_messages.found_item
 								check l_mesg /= Void end
-								if l_mesg.truncated and then nb_lines_to_retrieve < 0 or else l_mesg.truncated_lines < nb_lines_to_retrieve then
+								if
+									l_mesg.truncated and then
+									(nb_lines_to_retrieve < 0 or else l_mesg.truncated_lines < nb_lines_to_retrieve)
+								then
 									l_mesg := Void
 								end
 							end
@@ -636,7 +655,11 @@ feature {NONE} -- Initialization
 					pop.close
 				end
 			else
-				a_mail_account.add_log ("Error occurred [" + pop.error_text (pop.error_code) + "]")
+				if pop /= Void then
+					a_mail_account.add_log ("Error occurred [" + pop.error_text (pop.error_code) + "]")
+				else
+					a_mail_account.add_log ("Error occurred")
+				end
 			end
 			if pop /= Void and then pop.is_open then
 				if pop.transfer_initiated and not pop.error then
@@ -655,7 +678,7 @@ feature {NONE} -- Initialization
 			s: detachable STRING
 			dn: DIRECTORY_NAME
 			msgs_dn: DIRECTORY_NAME
-			fn: FILE_NAME
+			fn,hfn: FILE_NAME
 			dir: DIRECTORY
 			f: PLAIN_TEXT_FILE
 			html_output: PLAIN_TEXT_FILE
@@ -681,7 +704,7 @@ feature {NONE} -- Initialization
 			create html_output.make_open_write (fn.string)
 			html_output.put_string (html_head (Void))
 
-			html_output.put_string ("<div class=%"account%">" + a_url.location + "</div>%N")
+			html_output.put_string ("<div class=%"account%"><a href=%"../index.html%">" + a_url.location + "</a></div>%N")
 			if attached a_mail_account.messages_by_index as l_messages then
 				from
 					i := l_messages.upper
@@ -690,16 +713,26 @@ feature {NONE} -- Initialization
 					i < limit
 				loop
 					if attached l_messages[i] as l_mesg then
+						create hfn.make_from_string (msgs_dn)
+						hfn.set_file_name (l_mesg.index.out + "-headers")
+						hfn.add_extension ("txt")
+						create f.make (hfn.string)
+						if not f.exists or else f.is_writable then
+							f.open_write -- comment this to make weird crash
+							f.put_string (l_mesg.raw_headers_string)
+							f.close
+						end
+
 						create fn.make_from_string (msgs_dn)
 						fn.set_file_name (l_mesg.index.out)
 						fn.add_extension ("txt")
 						create f.make (fn.string)
 						if not f.exists or else f.is_writable then
 							f.open_write -- comment this to make weird crash
-							f.put_string (l_mesg.raw_string)
+							f.put_string (l_mesg.raw_message_string)
 							f.close
 						end
-
+						html_output.put_string ("<div class=%"message%">")
 						html_output.put_string ("<div class=%"line%">")
 						html_output.put_string ("<a href=%"messages/" + l_mesg.index.out  + ".txt%">")
 
@@ -717,6 +750,7 @@ feature {NONE} -- Initialization
 						end
 						html_output.put_string ("</a>")
 						html_output.put_string ("<br/>&nbsp;&nbsp;&nbsp;&nbsp; ")
+
 						if attached l_mesg.header_from as l_text_from then
 							s := l_text_from.string
 							s.replace_substring_all ("<", "&lt;")
@@ -724,6 +758,7 @@ feature {NONE} -- Initialization
 
 							html_output.put_string (" <span class=%"mfrom%">from: " + s + "</span>")
 						end
+
 						if attached l_mesg.header_to as l_text_to and then l_text_to.count > 0 then
 							s := l_text_to.string
 							s.replace_substring_all ("<", "&lt;")
@@ -749,12 +784,14 @@ feature {NONE} -- Initialization
 							end
 						end
 						html_output.put_string ("</span>")
+						html_output.put_string ("<span class=%"header-opt%">")
 						if attached l_mesg.uid as l_text_uid then
-							html_output.put_string ("<span class=%"header-opt%">")
 							html_output.put_string (" &lt;" + l_text_uid + "&gt;")
-							html_output.put_string ("</span>")
 						end
+						html_output.put_string (" <a href=%"messages/" + l_mesg.index.out  + "-headers.txt%">(headers)</a>")
+						html_output.put_string ("</span>")
 						html_output.put_string ("</div>%N")
+						html_output.put_string ("</div>%N%N")
 					end
 					i := i - 1
 				end
@@ -774,25 +811,19 @@ feature {NONE} -- Initialization
 			else
 				Result.append_string ("Check Email")
 			end
-			Result.append_string ("</title>")
-			Result.append_string ("<style>%N")
-			Result.append_string (" a { text-decoration: none; }%N")
-			Result.append_string (" .account {font-weight: bold; color: #900; }%N")
-			Result.append_string (" .line { font-size: 75%%; padding-top: 2px; border-bottom: solid 1px #ddd; }%N")
-			Result.append_string (" .header { font-style: italic; color: #999; }%N")
-			Result.append_string (" .header-opt { font-style: italic; color: #999; }%N")
-			Result.append_string (" .msubject {font-weight: bold; color: #00a }%N")
-			Result.append_string (" .mfrom {color: #090; }%N")
-			Result.append_string (" .mdate {font-style: italic; color: #600; }%N")
-			Result.append_string (" .content {color: #000; }%N")
-			Result.append_string ("</style>%N")
-			Result.append_string ("</head><body>%N")
+			Result.append_string ("</title>%N")
+			Result.append_string ("[
+					<link rel="stylesheet" type="text/css" href="../res/epop.css" />
+					<script type="text/javascript" src="../res/jquery.js"></script>
+					<script type="text/javascript" src="../res/epop.js"></script>
+				]");
+			Result.append_string ("%N</head><body>%N")
+			Result.append_string ("<div id=%"messages%" >%N")
 		end
-
 
 	html_footer (a_text: detachable STRING): STRING
 		do
-			Result := "</body></html>%N"
+			Result := "</div>%N</body></html>%N"
 		end
 
 feature -- Access

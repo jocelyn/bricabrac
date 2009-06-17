@@ -113,9 +113,32 @@ feature -- Access: header
 
 feature -- status report
 
+	raw_headers_string: STRING
+		local
+			h: like headers_text
+		do
+			h := headers_text
+			if h /= Void then
+				create Result.make_from_string (h)
+			else
+				create Result.make_empty
+			end
+		end
+
+	raw_message_string: STRING
+		local
+			m: like message
+		do
+			m := message
+			if m /= Void then
+				create Result.make_from_string (m)
+			else
+				create Result.make (0)
+			end
+		end
+
 	raw_string: STRING
 		local
-			l_headers: like headers
 			m: like message
 			h: like headers_text
 		do
@@ -270,6 +293,7 @@ feature {NONE} -- Implementation
 	date_time_from_string (a_text: STRING): detachable DATE_TIME
 			--| "18 May 2009 11:02:22 -0000"
 			--| "Mon, 18 May 2009 11:00:03 +0000"
+			--| "Mon, 18 May 2009 11:00:03 GMT"
 		require
 			a_text_attached: a_text /= Void
 		local
@@ -280,8 +304,10 @@ feature {NONE} -- Implementation
 			d,m,y: INTEGER
 			h,min,sec: INTEGER
 		do
+			s := a_text.string
+			s.replace_substring_all ("GMT", "+0000")
 			r := date_time_regexp
-			r.match (a_text)
+			r.match (s)
 			if r.has_matched then
 				d := r.captured_substring (1).to_integer
 				s := r.captured_substring (2)

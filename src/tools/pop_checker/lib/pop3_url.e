@@ -46,6 +46,32 @@ feature -- Status report
 
 feature -- Access
 
+	raw_url_encode (s: STRING)
+			-- cf RFC 1738
+		do
+			s.replace_substring_all ("%%", "%%25")
+			s.replace_substring_all (";", "%%3B")
+			s.replace_substring_all ("/", "%%2F")
+			s.replace_substring_all ("?", "%%3F")
+			s.replace_substring_all (":", "%%3A")
+			s.replace_substring_all ("@", "%%40")
+			s.replace_substring_all ("=", "%%3D")
+			s.replace_substring_all ("&", "%%26")
+		end
+
+	raw_url_decode (s: STRING)
+			-- cf RFC 1738
+		do
+			s.replace_substring_all ("%%26", "&")
+			s.replace_substring_all ("%%3B", ";")
+			s.replace_substring_all ("%%2F", "/")
+			s.replace_substring_all ("%%3F", "?")
+			s.replace_substring_all ("%%3A", ":")
+			s.replace_substring_all ("%%40", "@")
+			s.replace_substring_all ("%%3D", "=")
+			s.replace_substring_all ("%%25", "%%")
+		end
+
 	location: STRING
 			-- Full URL of resource
 			-- rfc2384: pop://<user>;auth=<auth>@<host>:<port>
@@ -57,6 +83,7 @@ feature -- Access
 
 			if not username.is_empty then
 				create s.make_from_string (username)
+				raw_url_encode (s)
 			end
 			if attached authentication as l_auth then
 				if s = Void then
@@ -94,6 +121,7 @@ feature {NONE} -- Basic operations
 						authentication := s.string
 					end
 					l_username.keep_head (p - 1)
+					raw_url_decode (l_username)
 				end
 			end
 		end
