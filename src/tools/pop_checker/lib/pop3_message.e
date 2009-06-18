@@ -287,13 +287,15 @@ feature {NONE} -- Implementation
 			create Result.make
 			Result.set_caseless (False)
 			Result.set_multiline (False)
-			Result.compile ("[a-zA-Z]+,\s{1}([0-3]?[0-9]) ([A-Z][a-z][a-z]) ([0-9]{4}) ([0-2][0-9]):([0-5][0-9]):([0-5][0-9])\s{1}([+-][0-9]{2})([0-9]{2})")
+			Result.compile ("([a-zA-Z],\s{1})?([0-3]?[0-9]) ([a-zA-Z][a-z][a-z]) ([0-9]{4}) ([0-2][0-9]):([0-5][0-9]):([0-5][0-9])((\s{1}[+-][0-9]{2})*([0-9]{2}))?")
 		end
 
+feature -- Date time helpers
+
 	date_time_from_string (a_text: STRING): detachable DATE_TIME
-			--| "18 May 2009 11:02:22 -0000"
-			--| "Mon, 18 May 2009 11:00:03 +0000"
-			--| "Mon, 18 May 2009 11:00:03 GMT"
+			--| "18 May 2009 17:02:22 -0000"
+			--| "Mon, 18 May 2009 17:00:03 +0000"
+			--| "Mon, 18 May 2009 17:00:03 GMT"
 		require
 			a_text_attached: a_text /= Void
 		local
@@ -309,15 +311,15 @@ feature {NONE} -- Implementation
 			r := date_time_regexp
 			r.match (s)
 			if r.has_matched then
-				d := r.captured_substring (1).to_integer
-				s := r.captured_substring (2)
+				d := r.captured_substring (2).to_integer
+				s := r.captured_substring (3)
 				if     s ~ "Jan" then m := 1
 				elseif s ~ "Feb" then m := 2
 				elseif s ~ "Mar" then m := 3
 				elseif s ~ "Apr" then m := 4
 				elseif s ~ "May" then m := 5
 				elseif s ~ "Jun" then m := 6
-				elseif s ~ "Jui" then m := 7
+				elseif s ~ "Jul" then m := 7
 				elseif s ~ "Aug" then m := 8
 				elseif s ~ "Sep" then m := 9
 				elseif s ~ "Oct" then m := 10
@@ -325,15 +327,16 @@ feature {NONE} -- Implementation
 				elseif s ~ "Dec" then m := 12
 				else check False end
 				end
-				y := r.captured_substring (3).to_integer
-				h := r.captured_substring (4).to_integer
-				min := r.captured_substring (5).to_integer
-				sec := r.captured_substring (6).to_integer
+				y := r.captured_substring (4).to_integer
+				h := r.captured_substring (5).to_integer
+				min := r.captured_substring (6).to_integer
+				sec := r.captured_substring (7).to_integer
 				create Result.make (y, m, d, h, min, sec)
 
-				if r.match_count > 6 then
-					hoff := r.captured_substring (7).to_integer
-					moff := r.captured_substring (8).to_integer
+				if r.match_count > 8 then
+					--| r.captured_substring (8) = r.captured_substring (9) + r.captured_substring (10)
+					hoff := r.captured_substring (9).to_integer
+					moff := r.captured_substring (10).to_integer
 					Result.hour_add (-hoff)
 					Result.minute_add (-moff)
 				end

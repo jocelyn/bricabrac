@@ -17,7 +17,18 @@ feature {NONE} -- Initialization
 			a_dir_attached: a_dir /= Void
 			a_dir_exists: (create {DIRECTORY}.make (a_dir)).exists
 		do
-			directory := a_dir
+			set_directory (a_dir)
+			create_directories
+		end
+
+	create_directories
+		local
+			dir: DIRECTORY
+		do
+			create dir.make (offline_directory)
+			if not dir.exists then
+				dir.create_dir
+			end
 		end
 
 feature -- Access
@@ -26,6 +37,7 @@ feature -- Access
 			-- Directory containing the data
 			-- abstract this later
 
+	offline_directory: STRING
 
 	profile_uuids: ARRAYED_LIST [STRING_8]
 		local
@@ -121,6 +133,16 @@ feature -- Access
 
 feature -- Element change: profiles	
 
+	set_directory (s: like directory)
+		local
+			dn: DIRECTORY_NAME
+		do
+			directory := s
+			create dn.make_from_string (s)
+			dn.extend ("offline")
+			offline_directory := dn.string
+		end
+
 	set_profile  (p: POP3_PROFILE)
 		local
 			l_profiles: like profiles
@@ -213,7 +235,7 @@ feature {NONE} -- Implementation: Data
 		local
 			fn: FILE_NAME
 		do
-			create fn.make_from_string (directory)
+			create fn.make_from_string (offline_directory)
 			fn.extend (a_uuid)
 			Result := fn.string
 		end

@@ -16,9 +16,15 @@
 		<library name="i18n" location="$ISE_LIBRARY\library\i18n\i18n.ecf"/>
 		<library name="net" location="$ISE_LIBRARY\library\net\net.ecf" readonly="false"/>
 		<library name="time" location="$ISE_LIBRARY\library\time\time.ecf"/>
-
 		<cluster name="pop" location=".\" recursive="true">
-
+			<file_rule>
+				<exclude>^tests$</exclude>
+			</file_rule>
 		</cluster>
+	</target>
+	<target name="test" extends="pop">
+		<root class="ANY" feature="default_create"/>
+		<library name="testing" location="$ISE_LIBRARY\library\testing\testing.ecf"/>
+		<tests name="tests" location="tests\"/>
 	</target>
 </system>

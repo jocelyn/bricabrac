@@ -38,3 +38,28 @@ body {
  #popb {
 	 margin-left: 50px;
  }
+
+textarea {
+	 line-height: 18px;
+	 width: 75%;
+	 height: 30%;
+	 min-height: 100px;
+ }
+
+div.grippie {
+background:#EEEEEE url(grippie.png) no-repeat scroll center 2px;
+border-color:#DDDDDD;
+border-style:solid;
+border-width:0pt 1px 1px;
+cursor:s-resize;
+height:9px;
+overflow:hidden;
+}
+.resizable-textarea textarea {
+display:block;
+margin-bottom:0pt;
+}
+div#log {
+	font-size: small;
+	background-color: #Ffc;
+}

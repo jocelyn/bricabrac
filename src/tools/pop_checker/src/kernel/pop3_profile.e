@@ -7,6 +7,9 @@ note
 class
 	POP3_PROFILE
 
+inherit
+	POP3_UTILITIES
+
 create
 	make,
 	make_from_location
@@ -54,6 +57,7 @@ feature {NONE} -- Initialization
 				else
 					username := a
 				end
+				raw_url_decode (username)
 			else
 				check attached a_username end
 				username := a_username

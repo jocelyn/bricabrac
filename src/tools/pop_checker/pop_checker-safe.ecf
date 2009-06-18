@@ -1,33 +1,26 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <system xmlns="http://www.eiffel.com/developers/xml/configuration-1-5-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-5-0 http://www.eiffel.com/developers/xml/configuration-1-5-0.xsd" name="pop_checker_application" uuid="6CDC1B4B-5423-463B-82D4-6A325CB31438">
 	<target name="pop_checker_common">
-		<option debug="false" full_class_checking="true" syntax="transitional">
+		<option debug="false" full_class_checking="true" is_attached_by_default="true" void_safety="all" syntax="transitional">
 			<debug name="pop" enabled="true"/>
 			<assertions precondition="true" postcondition="true" check="true" invariant="true"/>
 		</option>
-		<library name="arg_parser" location="$ISE_LIBRARY\library\argument_parser\argument_parser.ecf"/>
-		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
-		<library name="gobo_extension" location="$ISE_LIBRARY\library\gobo_extension\gobo_extension.ecf"/>
-		<library name="gobo_structure" location="$ISE_LIBRARY\library\gobo\gobo_structure.ecf"/>
-		<library name="pop" location="lib\pop.ecf" readonly="false">
+		<library name="arg_parser" location="$ISE_LIBRARY\library\argument_parser\argument_parser-safe.ecf"/>
+		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
+		<library name="gobo_extension" location="$ISE_LIBRARY\library\gobo_extension\gobo_extension-safe.ecf"/>
+		<library name="gobo_structure" location="$ISE_LIBRARY\library\gobo\gobo_structure-safe.ecf"/>
+		<library name="pop" location="lib\pop-safe.ecf" readonly="false">
 			<option debug="false">
 				<debug name="pop" enabled="true"/>
 			</option>
 		</library>
-		<library name="time" location="$ISE_LIBRARY\library\time\time.ecf"/>
-		<library name="uuid" location="$ISE_LIBRARY\library\uuid\uuid.ecf"/>
+		<library name="time" location="$ISE_LIBRARY\library\time\time-safe.ecf"/>
+		<library name="uuid" location="$ISE_LIBRARY\library\uuid\uuid-safe.ecf"/>
 		<cluster name="pop_checker" location=".\src\">
 			<cluster name="pop_checker_kernel" location="$|kernel\" recursive="true"/>
 		</cluster>
 	</target>
-	<target name="pop_checker_graphical" extends="pop_checker_common">
-		<root class="POP_CHECKER_GRAPHICAL" feature="make"/>
-		<setting name="console_application" value="false"/>
-		<setting name="executable_name" value="pop_checker"/>
-		<library name="vision2" location="$ISE_LIBRARY\library\vision2\vision2.ecf"/>
-		<cluster name="pop_checker_graphical" location=".\src\graphical\" recursive="true"/>
-	</target>
-	<target name="pop_checker_batch" extends="pop_checker_common">
+	<target name="pop_checker_batch_vs" extends="pop_checker_common">
 		<root class="POP_CHECKER_BATCH" feature="make"/>
 		<option debug="false">
 			<debug name="pop" enabled="false"/>

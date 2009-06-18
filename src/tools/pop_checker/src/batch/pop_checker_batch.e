@@ -25,9 +25,9 @@ feature {NONE} -- Initialization
 --			l_pop3_location: POP3_LOCATION
 		do
 			if attached command_line.separate_character_option_value ('p') as l_dir then
-				profile_directory := l_dir
+				set_profile_directory (l_dir)
 			else
-				profile_directory := current_working_directory
+				set_profile_directory (current_working_directory)
 			end
 			create mail_checker_data.make (profile_directory)
 			create logger.make_open_write (logger_filename)
@@ -72,7 +72,14 @@ feature {NONE} -- Initialization
 					check not l_username.is_empty and not l_password.is_empty end
 					create l_profile.make_from_location (n, l_username, l_password)
 					l_profile.enable
+					debug ("popchecker_io")
+						io.put_string ("Saving profiles%N")
+					end
 					mail_checker_data.set_profile (l_profile)
+					debug ("popchecker_io")
+						io.put_string ("Checking email for profile%N")
+					end
+--					check_profile_authentication (l_profile)
 					check_profile_and_report (l_profile)
 				end
 			else
@@ -95,6 +102,10 @@ feature {NONE} -- Initialization
 				end
 			end
 			logger.close
+
+			debug ("popchecker_io")
+				io.put_string ("Bye bye ...")
+			end
 		end
 
 	mail_checker_data: MAIL_CHECKER_DATA
@@ -103,30 +114,24 @@ feature {NONE} -- Initialization
 
 	profile_directory: STRING
 
+	set_profile_directory (s: like profile_directory)
+		local
+			dn: DIRECTORY_NAME
+		do
+			profile_directory := s
+			create dn.make_from_string (s)
+			dn.extend ("offline")
+			offline_directory := dn.string
+		end
+
+	offline_directory: STRING
+
 	logger_filename: STRING is
 		local
 			fn: FILE_NAME
 		do
-			create fn.make_from_string (profile_directory)
+			create fn.make_from_string (offline_directory)
 			fn.set_file_name ("pop_checker.log")
-			Result := fn.string
-		end
-
-	profiles_edb_filename: STRING is
-		local
-			fn: FILE_NAME
-		do
-			create fn.make_from_string (profile_directory)
-			fn.set_file_name ("profiles.edb")
-			Result := fn.string
-		end
-
-	data_edb_filename: STRING is
-		local
-			fn: FILE_NAME
-		do
-			create fn.make_from_string (profile_directory)
-			fn.set_file_name ("messages.edb")
 			Result := fn.string
 		end
 
@@ -140,6 +145,27 @@ feature {NONE} -- Initialization
 			end
 		end
 
+	check_profiles_authentication (a_profiles: like profiles)
+		local
+			n: detachable STRING
+			l_profile: like profile
+			fn: FILE_NAME
+			f: detachable PLAIN_TEXT_FILE
+		do
+			from
+				a_profiles.start
+			until
+				a_profiles.after
+			loop
+				n := a_profiles.item
+				l_profile := profile (n)
+				if l_profile /= Void then
+					check_profile_authentication (l_profile)
+				end
+				a_profiles.forth
+			end
+		end
+
 	check_profiles (a_profiles: like profiles; open_index_file: BOOLEAN)
 		local
 			n: detachable STRING
@@ -147,7 +173,7 @@ feature {NONE} -- Initialization
 			fn: FILE_NAME
 			f: detachable PLAIN_TEXT_FILE
 		do
-			create fn.make_from_string (profile_directory)
+			create fn.make_from_string (offline_directory)
 			fn.set_file_name ("index.html")
 			create f.make (fn)
 			if not f.exists or else f.is_writable then
@@ -168,7 +194,7 @@ feature {NONE} -- Initialization
 				l_profile := profile (n)
 				if l_profile /= Void then
 					if f /= Void then
-						f.put_string ("<li><a href=%"" + l_profile.uuid + "/" + "index.html%">")
+						f.put_string ("<li><a class=%"profile%" href=%"" + l_profile.uuid + "/" + "index.html%">")
 						f.put_string (l_profile.location)
 						f.put_string ("</a> : ")
 						f.flush
@@ -194,7 +220,7 @@ feature {NONE} -- Initialization
 						else
 							f.put_string ("disabled")
 						end
-						f.put_string ("</li>")
+						f.put_string ("</li>%N")
 						f.flush
 					end
 				end
@@ -256,7 +282,7 @@ feature {NONE} -- Initialization
 		local
 			l_profile: detachable POP3_PROFILE
 			l_location: POP3_URL
-			s, n, q: detachable STRING
+			s, n, q, r: detachable STRING
 			i,m: INTEGER
 			profs: ARRAY [POP3_PROFILE]
 		do
@@ -293,20 +319,27 @@ feature {NONE} -- Initialization
 						end
 						i := i + 1
 					end
+					print ("(A,a) Check all profiles (a: only credential)%N")
 					print ("Selection (q=quit)?")
 					i := 0
 					io.read_line
 					q := io.last_string.string
-					q.to_lower
 					q.left_adjust
 					q.right_adjust
-					if q.is_integer then
-						i := q.to_integer
+					r := q.as_lower
+					if r.is_integer then
+						i := r.to_integer
 						if i > 0 then
 							l_profile := profs[i]
 							manage_profile (l_profile)
 						end
-					elseif q.count > 0 and then q.item (1) = 'q' then
+					elseif r.count > 0 and then r.item (1) = 'a' then
+						if q.item (1) = 'a' then
+							check_profiles_authentication (profiles)
+						else
+							check_profiles (profiles, command_line.index_of_word_option ("-browser") > 0)
+						end
+					elseif r.count > 0 and then r.item (1) = 'q' then
 						i := -1
 					end
 				else
@@ -368,8 +401,10 @@ feature {NONE} -- Initialization
 					print ("  3) Enable%N")
 				end
 				print ("  4) Delete%N")
-				print ("  5) Cancel%N")
-				print ("  6) Check email%N")
+				print ("  5) Check authentication%N")
+				print ("  6) Check emails%N")
+				print ("  M) Back to previous menu%N")
+
 				print ("     Select operation:")
 				io.read_line
 				q := io.last_string
@@ -398,12 +433,16 @@ feature {NONE} -- Initialization
 					when 4 then
 						delete_this_profile (a_prof)
 					when 5 then
-						q := "cancel"
+						check_profile_authentication (a_prof)
 					when 6 then
 						check_profile_and_report (a_prof)
+						q := Void
 					else
 						q := Void
 					end
+				elseif q.is_case_insensitive_equal ("m") then
+					q := "menu"
+				else
 				end
 			end
 		end
@@ -494,17 +533,22 @@ feature {NONE} -- Initialization
 			end
 		end
 
+	check_profile_authentication (a_prof: POP3_PROFILE)
+		do
+			check_pop (a_prof.uuid, a_prof.host, a_prof.port, a_prof.username, a_prof.password, True)
+		end
 
 	check_profile (a_prof: POP3_PROFILE)
 		do
 			if a_prof.enabled then
-				check_pop (a_prof.uuid, a_prof.host, a_prof.port, a_prof.username, a_prof.password)
+				check_pop (a_prof.uuid, a_prof.host, a_prof.port, a_prof.username, a_prof.password, False)
 			end
 		end
 
-	check_pop (a_uuid: STRING; a_server: STRING; a_port: INTEGER; a_user, a_pass: STRING)
+	check_pop (a_uuid: STRING; a_server: STRING; a_port: INTEGER; a_user, a_pass: STRING; only_authentication: BOOLEAN)
 		local
 			l_url: POP3_URL
+			s: detachable STRING
 		do
 			create l_url.make (a_server)
 			if a_port > 0 then
@@ -512,7 +556,19 @@ feature {NONE} -- Initialization
 			end
 			l_url.set_username (a_user)
 			l_url.set_password (a_pass)
-			check_pop_url (a_uuid, l_url)
+			if only_authentication then
+
+				s := check_authentication (l_url)
+				print ("Authentication of " + l_url.location + ": ")
+				if s = Void then
+					print (" Ok")
+				else
+					print (" Wrong: " + s)
+				end
+				print ("%N")
+			else
+				check_pop_url (a_uuid, l_url)
+			end
 		end
 
 	check_pop_url (a_uuid: STRING; a_url: POP3_URL)
@@ -534,8 +590,72 @@ feature {NONE} -- Initialization
 				n := -1
 			end
 			check_account (a_url, l_data, n, l_force_update)
+			debug ("popchecker_io")
+				io.put_string ("Saving messages%N")
+			end
 			mail_checker_data.set_data (l_data)
+			debug ("popchecker_io")
+				io.put_string ("Saving messages: completed%N")
+			end
 			report_account (a_url, l_data)
+			debug ("popchecker_io")
+				io.put_string ("Reporting completed%N")
+			end
+		end
+
+	check_authentication (a_url: POP3_URL): detachable STRING
+		local
+			pop: detachable POP3_PROTOCOL
+			s: detachable STRING
+			mesgs: detachable LIST [POP3_MESSAGE]
+			l_stored_data: like data
+			l_stored_messages: HASH_TABLE [POP3_MESSAGE, STRING]
+			l_uids: ARRAYED_LIST [STRING]
+			l_index: INTEGER
+			l_uid: detachable STRING
+			l_mesg: detachable POP3_MESSAGE
+			l_msg_count: INTEGER
+			l_log: detachable STRING
+			retried: BOOLEAN
+		do
+			if not retried then
+					-- update location
+				io.error.put_string ("%NCheck authentication " + a_url.location + "%N")
+				logger.put_string (a_url.location)
+
+				create pop.make_with_address (a_url)
+				pop.set_read_mode
+				pop.set_connect_timeout (500)
+				pop.set_timeout (5)
+				pop.open
+				if not pop.error then
+					pop.initiate_transfer
+					if pop.transfer_initiated then
+						pop.authenticate
+					end
+				end
+				if pop.error then
+					Result := pop.error_text (pop.error_code)
+				end
+			else
+				Result := "Error occurred"
+			end
+			if pop /= Void then
+				if pop.error then
+					Result := pop.error_text (pop.error_code)
+				end
+				if pop.is_open then
+					if pop.transfer_initiated and not pop.error then
+						pop.quit
+					end
+					pop.close
+				end
+			else
+				Result := "Error occurred"
+			end
+		rescue
+			retried := True
+			retry
 		end
 
 	check_account (a_url: POP3_URL; a_mail_account: POP3_MESSAGES_DATA; nb_lines_to_retrieve: INTEGER; a_force_update: BOOLEAN)
@@ -632,7 +752,9 @@ feature {NONE} -- Initialization
 									l_stored_messages.force (l_mesg, l_uid)
 								end
 							else
-	--							io.put_string ("  - already downloaded...%N")
+								debug ("popchecker_io")
+									io.put_string ("  - already downloaded...%N")
+								end
 								l_mesg.update_index (l_index)
 							end
 							logger.put_string (l_mesg.to_string + "")
@@ -683,7 +805,7 @@ feature {NONE} -- Initialization
 			f: PLAIN_TEXT_FILE
 			html_output: PLAIN_TEXT_FILE
 		do
-			create dn.make_from_string (profile_directory)
+			create dn.make_from_string (offline_directory)
 			dn.extend (a_mail_account.file_name)
 
 			create msgs_dn.make_from_string (dn.string)
@@ -698,20 +820,25 @@ feature {NONE} -- Initialization
 				dir.create_dir
 			end
 
-
+			debug ("popchecker_io")
+				io.put_string ("Reporting account%N")
+			end
 			create fn.make_from_string (dn)
 			fn.set_file_name ("index.html")
 			create html_output.make_open_write (fn.string)
 			html_output.put_string (html_head (Void))
 
-			html_output.put_string ("<div class=%"account%"><a href=%"../index.html%">" + a_url.location + "</a></div>%N")
-			if attached a_mail_account.messages_by_index as l_messages then
+			html_output.put_string ("<div class=%"account%"><a class=%"rawtext%" href=%"../index.html%">" + a_url.location + "</a></div>%N")
+			if attached a_mail_account.messages_by_date as l_messages then
 				from
 					i := l_messages.upper
 					limit := l_messages.lower
 				until
 					i < limit
 				loop
+					debug ("popchecker_io")
+						io.put_string (" - report message " + i.out + "%N")
+					end
 					if attached l_messages[i] as l_mesg then
 						create hfn.make_from_string (msgs_dn)
 						hfn.set_file_name (l_mesg.index.out + "-headers")
@@ -771,12 +898,24 @@ feature {NONE} -- Initialization
 								html_output.put_string (" <span class=%"mdate%">")
 								html_output.put_integer (l_dt.year)
 								html_output.put_character ('/')
+								if l_dt.month < 10 then
+									html_output.put_integer (0)
+								end
 								html_output.put_integer (l_dt.month)
 								html_output.put_character ('/')
+								if l_dt.day < 10 then
+									html_output.put_integer (0)
+								end
 								html_output.put_integer (l_dt.day)
 								html_output.put_character ('-')
+								if l_dt.hour < 10 then
+									html_output.put_integer (0)
+								end
 								html_output.put_integer (l_dt.hour)
 								html_output.put_character (':')
+								if l_dt.minute < 10 then
+									html_output.put_integer (0)
+								end
 								html_output.put_integer (l_dt.minute)
 								html_output.put_string ("</span>")
 							else
@@ -788,7 +927,7 @@ feature {NONE} -- Initialization
 						if attached l_mesg.uid as l_text_uid then
 							html_output.put_string (" &lt;" + l_text_uid + "&gt;")
 						end
-						html_output.put_string (" <a href=%"messages/" + l_mesg.index.out  + "-headers.txt%">(headers)</a>")
+						html_output.put_string (" <a class=%"rawheaders%" href=%"messages/" + l_mesg.index.out  + "-headers.txt%">(headers)</a>")
 						html_output.put_string ("</span>")
 						html_output.put_string ("</div>%N")
 						html_output.put_string ("</div>%N%N")
@@ -799,6 +938,9 @@ feature {NONE} -- Initialization
 			html_output.put_string (html_footer (Void))
 			html_output.put_string ("</body></html>%N")
 			html_output.close
+			debug ("popchecker_io")
+				io.put_string ("Account reporting completed.")
+			end
 		end
 
 	html_head (a_title: detachable STRING): STRING
@@ -813,9 +955,9 @@ feature {NONE} -- Initialization
 			end
 			Result.append_string ("</title>%N")
 			Result.append_string ("[
-					<link rel="stylesheet" type="text/css" href="../res/epop.css" />
-					<script type="text/javascript" src="../res/jquery.js"></script>
-					<script type="text/javascript" src="../res/epop.js"></script>
+					<link rel="stylesheet" type="text/css" href="../../res/epop.css" />
+					<script type="text/javascript" src="../../res/jquery.js"></script>
+					<script type="text/javascript" src="../../res/epop.js"></script>
 				]");
 			Result.append_string ("%N</head><body>%N")
 			Result.append_string ("<div id=%"messages%" >%N")

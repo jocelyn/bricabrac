@@ -58,6 +58,54 @@ feature -- Access
 			end
 		end
 
+	messages_by_date: ARRAY [POP3_MESSAGE]
+		local
+			l_messages: like messages
+			m: POP3_MESSAGE
+			lst: DS_ARRAYED_LIST [POP3_MESSAGE]
+		do
+			l_messages := messages
+			create lst.make (l_messages.count)
+			from
+				l_messages.start
+			until
+				l_messages.after
+			loop
+				m := l_messages.item_for_iteration
+				lst.force_last (m)
+				l_messages.forth
+			end
+			lst.sort (message_sorter_by_date)
+			if attached lst.to_array as arr then
+				Result := arr
+			else
+				Result := messages_by_index
+			end
+		end
+
+	message_sorter_by_date: DS_QUICK_SORTER [POP3_MESSAGE]
+		local
+			comparator: AGENT_BASED_EQUALITY_TESTER [POP3_MESSAGE]
+		once
+			create comparator.make (agent compare_date)
+			create Result.make (comparator)
+		end
+
+	compare_date (m1, m2: POP3_MESSAGE): BOOLEAN
+		local
+			d1, d2: detachable DATE_TIME
+		do
+			d1 := m1.header_date_time
+			d2 := m2.header_date_time
+			if d1 = Void or d2 = Void then
+				Result := m1.index < m2.index
+			elseif d1 = Void then
+				Result := False
+			else
+				Result := d1 < d2
+			end
+		end
+
 	has_log: BOOLEAN
 		do
 			Result := attached logs as l and then not l.is_empty

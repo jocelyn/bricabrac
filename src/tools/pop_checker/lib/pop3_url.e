@@ -16,6 +16,11 @@ inherit
 			analyze
 		end
 
+	POP3_UTILITIES
+		undefine
+			is_equal
+		end
+
 create
 	make
 
@@ -45,32 +50,6 @@ feature -- Status report
 		end
 
 feature -- Access
-
-	raw_url_encode (s: STRING)
-			-- cf RFC 1738
-		do
-			s.replace_substring_all ("%%", "%%25")
-			s.replace_substring_all (";", "%%3B")
-			s.replace_substring_all ("/", "%%2F")
-			s.replace_substring_all ("?", "%%3F")
-			s.replace_substring_all (":", "%%3A")
-			s.replace_substring_all ("@", "%%40")
-			s.replace_substring_all ("=", "%%3D")
-			s.replace_substring_all ("&", "%%26")
-		end
-
-	raw_url_decode (s: STRING)
-			-- cf RFC 1738
-		do
-			s.replace_substring_all ("%%26", "&")
-			s.replace_substring_all ("%%3B", ";")
-			s.replace_substring_all ("%%2F", "/")
-			s.replace_substring_all ("%%3F", "?")
-			s.replace_substring_all ("%%3A", ":")
-			s.replace_substring_all ("%%40", "@")
-			s.replace_substring_all ("%%3D", "=")
-			s.replace_substring_all ("%%25", "%%")
-		end
 
 	location: STRING
 			-- Full URL of resource
@@ -121,8 +100,8 @@ feature {NONE} -- Basic operations
 						authentication := s.string
 					end
 					l_username.keep_head (p - 1)
-					raw_url_decode (l_username)
 				end
+				raw_url_decode (l_username)
 			end
 		end
 
