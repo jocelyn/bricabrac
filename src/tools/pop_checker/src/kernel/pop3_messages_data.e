@@ -43,6 +43,7 @@ feature -- Access
 		local
 			l_messages: like messages
 			m: POP3_MESSAGE
+			i: INTEGER
 		do
 			l_messages := messages
 			create Result.make (1, l_messages.count)
@@ -52,6 +53,7 @@ feature -- Access
 				l_messages.after
 			loop
 				m := l_messages.item_for_iteration
+				i := i.max (m.index)
 				Result [m.index] := m
 --				Result.force ()
 				l_messages.forth
@@ -75,11 +77,39 @@ feature -- Access
 				lst.force_last (m)
 				l_messages.forth
 			end
+
 			lst.sort (message_sorter_by_date)
 			if attached lst.to_array as arr then
 				Result := arr
 			else
-				Result := messages_by_index
+				Result := <<>> --|  messages_by_index
+				check should_not_occur: False end
+			end
+		end
+
+	offline_messages_by_date: ARRAY [POP3_MESSAGE]
+		local
+			lst: DS_ARRAYED_LIST [POP3_MESSAGE]
+		do
+			if attached offline_messages as l_offmesgs then
+				from
+					create lst.make (l_offmesgs.count)
+					l_offmesgs.start
+				until
+					l_offmesgs.after
+				loop
+					lst.force_last (l_offmesgs.item.message)
+					l_offmesgs.forth
+				end
+				lst.sort (message_sorter_by_date)
+				if attached lst.to_array as arr then
+					Result := lst.to_array
+				else
+					Result := <<>>
+					check should_not_occur: False end
+				end
+			else
+				Result := <<>>
 			end
 		end
 
@@ -167,13 +197,16 @@ feature -- Basic operations
 				mesgs.after
 			loop
 				l_uid := mesgs.key_for_iteration
-				if not l_uuids.has (l_uid) then
+				if l_uuids.has (l_uid) then
+					mesgs.forth
+				else
 					record_offline (mesgs.item_for_iteration)
 					mesgs.remove (l_uid)
-				else
-					mesgs.forth
 				end
 			end
+--			if attached offline_messages as l_offs then
+--				update_offline_messages (l_offs)
+--			end
 		end
 
 	record_offline (a_msg: POP3_MESSAGE)
@@ -190,9 +223,24 @@ feature -- Basic operations
 				offline_messages := l_offline
 			end
 			counter := counter + 1
+			a_msg.update_index (counter.as_integer_32)
 			l_offline.force ([counter, a_msg])
 			a_msg.reset_index
 		end
+
+--	update_offline_messages (a_offline_messages: like offline_messages)
+--		do
+--			from
+--				a_offline_messages.start
+--			until
+--				a_offline_messages.after
+--			loop
+--				if attached a_offline_messages.item as l_off then
+--					l_off.message.update_index (l_off.id.to_integer_32)
+--				end
+--				a_offline_messages.forth
+--			end
+--		end
 
 feature -- Element change
 

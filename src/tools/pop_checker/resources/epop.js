@@ -18,15 +18,15 @@ $(document).ready(function() {
 			}
 		);
 
-		logThis("Start succeed");
-
 		loadJS("jquery.textarearesizer.js");
 		loadJS("jquery.autogrow.js");
 		//logThis("Extra loading succeed");
+		logThis("Start completed");
 	}
 );
 
 function logThis(msg) {
+	$("#log").stop(true,true);
 	$("#log").fadeIn("normal");
 	$("#log").append("<div>" + msg + "</div>");
 	$.ajax({
@@ -34,22 +34,32 @@ function logThis(msg) {
 		type: "GET",
 		dataType: "text",
 		timeout: 1000,
-		success: function(txt) { $("#log").fadeOut(9000, function() { $("#log").empty(); }) }
+		success: function(txt) { $("#log").fadeOut(6000, function() { $("#log").empty(); }) }
 	});
 
 }
 function loadJS(file) {
-	$.getScript(file, function(){ logThis("[" + file + "] loaded"); });
+	//fn = file;
+	fn = "../../res/" + file;
+	try {
+		$.getScript(fn, function(){ logThis("[" + fn + "] loaded"); });
+	} catch (error) {
+		logThis("Could not load script [" + fn + "]");
+	}
 }
 
 var last_message_url="";
 
+function restore_href_on_link(a_link, a_url) {
+	//logThis("restore href=" + a_url + " instead of " + a_link.attr("href"));
+	a_link.attr("href", a_url);
+}
+
 function readEmail(t) {
- logThis ("tag=" + t.attr("tagName") + "id=" + t.attr("id") + "class=" + t.attr("class"));
 	if (t.attr("tagName") == "A") {
 		e = t;
 	} else {
- alert ("tag=" + t.attr("tagName") + "id=" + t.attr("id") + "class=" + t.attr("class"));
+		alert ("tag=" + t.attr("tagName") + "id=" + t.attr("id") + "class=" + t.attr("class"));
 		e = $("div.line a", t);
 	}
 	url = "" + e.attr("href");
@@ -70,8 +80,8 @@ function readEmail(t) {
 			type: "GET",
 			dataType: "text",
 			timeout: 1,
-			error: function() { e.attr("href", url_to_restore); },
-			success: function(txt) { e.attr("href", url_to_restore); }
+			error: function() { restore_href_on_link(e, url_to_restore); },
+			success: function(txt) { restore_href_on_link(e, url_to_restore); }
 		});
 	} else {
 		cleanRead();
@@ -80,16 +90,23 @@ function readEmail(t) {
 		message_div.append("<div id=\"popb\"/>");
 		pop = $("#popb")
 		pop.empty();
-		pop.append("<div id=\"popt\">" + e.text() + "</div>\n");
+		pop.append("<div id=\"popt\">");
+		//pop.append (e.text())
+		pop.append ("<div id=\"loading\">loading ... <span class=\"loading\"/></div>\n");
+		pop.append ("</div>\n");
 		pop.show("normal");
+		$("#loading .loading").animate({ width: "90%"}, {queue:true, duration: 3000 })
+			.animate({width: "10%"} , 1500);
+
 		$.ajax({
 			url: url,
 			type: "GET",
 			dataType: "text",
 			timeout: 1000,
-			error: function() { alert ("Error loading: " + url); e.attr("href", url); },
-			success: function(html) { showMessage(html,pop); e.attr("href", url); }
+			error: function() { alert ("Error loading: " + url); restore_href_on_link(e, url); },
+			success: function(html) {  restore_href_on_link(e, url); showMessage(html,pop); }
 		});
+
 	}
 }
 
@@ -99,11 +116,17 @@ function cleanRead() {
 }
 
 function showMessage(m,e) {
+	
+	$("#loading", e).each(function(){ $(this).remove(); });
 	//e.append("<textarea cols='100' rows='25' wrap='soft' readonly>" + m + "</textarea>");
 	e.append("<div class=\"resizable-textarea\"><textarea>" + m + "</textarea></div>");
 
 	//$('textarea.resizable:not(.processed)').TextAreaResizer();
+	try {
 	$('textarea').TextAreaResizer();
 	$('textarea').autogrow();
 	//$("textarea").addClass("jq");
+	} catch (error) {
+		logThis("Exception raised in showMessage(..)");
+	}
 }

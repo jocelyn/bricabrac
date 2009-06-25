@@ -82,6 +82,8 @@ feature -- Access
 			Result := status = 0
 		end
 
+feature -- Status setting
+
 	set_new
 		do
 			status := 0
@@ -96,7 +98,6 @@ feature -- Access
 		do
 			status := 1
 		end
-
 
 feature -- Access: header
 

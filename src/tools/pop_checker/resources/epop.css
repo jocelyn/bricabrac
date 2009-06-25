@@ -1,65 +1,85 @@
 body {
 	margin: 0;
 }
- a { text-decoration: none; }
- .account, .account a { 
-			padding: 20px; 
-	 		margin: 0; 
-	 		font-weight: bold;
-			border: dotted 1px #00f; 
-			background-color: #009; 
-			color: #fff; 
-		}
-  .message { 
-	  border: solid 1px #ddd; 
-	  margin: 0 10px 1px 10px;
-	  padding: 0 3px 3px 3px;
-  	}
-  div.message:hover { 
-	  border: solid 1px #00f; 
-	  background-color: #ccf;
-  	}
- .line { font-size: 75%; padding-top: 2px; }
- .header { font-style: italic; color: #999; }
- .header-opt { font-style: italic; color: #999; }
- .msubject {font-weight: bold; color: #00a }
- .mfrom {color: #090; }
- .mdate {font-style: italic; color: #600; }
- .content {color: #000; }
- .jq {color: #F00; border: solid 2px #f00; }
- #pop {
-	 display: none; 
-	 position: absolute;
-	 margin: 0 auto;
-	 top: 100px; left: 100px; right: 100px;
-	 border: solid 2px #00f;
-	 background-color: #ccccff;
+a { text-decoration: none; }
+
+.info {
+	font-size: 85%;
+	font-style: italic;
+	padding: 2px 2px 2px 20px;
+	margin: 10px 10px 1px 10px;
+	border: solid 1px #ddd;
+	background-color: #eee;
+}
+.account, .account a { 
+	padding: 20px; 
+	margin: 0; 
+	font-weight: bold;
+	background-color: #009; 
+	color: #fff; 
+	}
+.message { 
+	border: solid 1px #ddd; 
+	margin: 0 10px 1px 10px;
+	padding: 0 3px 3px 3px;
+}
+div.message { 
+	background-color: #fff;
+}
+div.message:hover { 
+	border: solid 1px #aaf; 
+	background-color: #efefff;
+}
+.line { font-size: 75%; padding-top: 2px; }
+.header { font-style: italic; color: #999; }
+.header-opt { font-style: italic; color: #999; }
+.msubject {font-weight: bold; color: #00a }
+.mfrom {color: #090; }
+.mdate {font-style: italic; color: #600; }
+.content {color: #000; }
+.jq {color: #F00; border: solid 2px #f00; }
+#pop {
+	display: none; 
+	position: absolute;
+	margin: 0 auto;
+	top: 100px; left: 100px; right: 100px;
+	border: solid 2px #00f;
+	background-color: #ccccff;
  }
  #popb {
-	 margin-left: 50px;
+	 margin-left: 20px;
  }
 
-textarea {
+ textarea {
 	 line-height: 18px;
-	 width: 75%;
+	 width: 100%;
 	 height: 30%;
 	 min-height: 100px;
  }
 
-div.grippie {
-background:#EEEEEE url(grippie.png) no-repeat scroll center 2px;
-border-color:#DDDDDD;
-border-style:solid;
-border-width:0pt 1px 1px;
-cursor:s-resize;
-height:9px;
-overflow:hidden;
+ div.grippie {
+	 background:#EEEEEE url(grippie.png) no-repeat scroll center 2px;
+	 border-color:#DDDDDD;
+	 border-style:solid;
+	 border-width:0pt 1px 1px;
+	 cursor:s-resize;
+	 height:9px;
+	 overflow:hidden;
 }
 .resizable-textarea textarea {
-display:block;
-margin-bottom:0pt;
+	display:block;
+	margin-bottom:0pt;
 }
 div#log {
-	font-size: small;
-	background-color: #Ffc;
+	font-size: 55%;
+	background-color: #ffc;
+	border: solid 1px #00f;
+	width: 50%;
+	position: absolute;
+	top: 2px;
+	right: 2px;
+}
+.loading {
+	border-bottom: solid 1px #f00;
+	width: 1%;
 }

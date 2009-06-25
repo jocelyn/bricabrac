@@ -206,7 +206,7 @@ feature {NONE} -- Implementation: Profiles
 
 	profiles: HASH_TABLE [POP3_PROFILE, STRING_8]
 		local
-			st: detachable like profiles
+			st: detachable HASH_TABLE [POP3_PROFILE, STRING_8] --like profiles
 			f: RAW_FILE
 		do
 			st ?= storable_from_file (profiles_edb_path)

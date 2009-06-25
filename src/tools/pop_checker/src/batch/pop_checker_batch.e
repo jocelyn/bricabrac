@@ -24,13 +24,14 @@ feature {NONE} -- Initialization
 			n, l_username, l_password: detachable STRING
 --			l_pop3_location: POP3_LOCATION
 		do
-			if attached command_line.separate_character_option_value ('p') as l_dir then
+			if attached command_line.separate_word_option_value ("p") as l_dir then
 				set_profile_directory (l_dir)
 			else
 				set_profile_directory (current_working_directory)
 			end
 			create mail_checker_data.make (profile_directory)
 			create logger.make_open_write (logger_filename)
+			verbose := command_line.index_of_word_option ("v") > 0
 			i := command_line.index_of_word_option ("add")
 			if i > 0 then
 				n := command_line.argument (i + 1)
@@ -87,11 +88,11 @@ feature {NONE} -- Initialization
 				if i > 0 then
 					export_profiles (profiles)
 				else
-					i := command_line.index_of_character_option ('a')
+					i := command_line.index_of_word_option ("a")
 					if i > 0 then
 						check_profiles (profiles, command_line.index_of_word_option ("-browser") > 0)
 					else
-						i := command_line.index_of_character_option ('c')
+						i := command_line.index_of_word_option ("c")
 						if i > 0 and then attached command_line.argument (i + 1) as l_uuid then
 							check_this_profile (l_uuid)
 						else
@@ -111,6 +112,8 @@ feature {NONE} -- Initialization
 	mail_checker_data: MAIL_CHECKER_DATA
 
 	logger: PLAIN_TEXT_FILE
+
+	verbose: BOOLEAN
 
 	profile_directory: STRING
 
@@ -581,8 +584,8 @@ feature {NONE} -- Initialization
 			if l_data = Void then
 				create l_data.make (a_uuid)
 			end
-			l_force_update := command_line.index_of_character_option ('f') > 0
-			if command_line.index_of_character_option ('h') > 0 then
+			l_force_update := command_line.index_of_word_option ("f") > 0
+			if command_line.index_of_word_option ("h") > 0 then
 				n := 0
 			elseif attached command_line.separate_character_option_value ('n') as l_nb and then l_nb.is_integer then
 				n := l_nb.to_integer
@@ -671,11 +674,12 @@ feature {NONE} -- Initialization
 			l_mesg: detachable POP3_MESSAGE
 			l_msg_count: INTEGER
 			l_log: detachable STRING
+			n: INTEGER
 			retried: BOOLEAN
 		do
 			if not retried then
 					-- update location
-				io.error.put_string ("%NCheck account " + a_url.location + "%N")
+				io.error.put_string ("Check account " + a_url.location + "%N")
 				logger.put_string (a_url.location)
 				a_mail_account.reset_logs
 
@@ -705,6 +709,12 @@ feature {NONE} -- Initialization
 						check mesgs /= Void end
 						from
 							a_mail_account.keep (mesgs)
+							n := mesgs.count - a_mail_account.messages_count
+							if n > 0 then
+								io.error.put_string ("  -> ")
+								io.error.put_integer (n)
+								io.error.put_string (" new messages%N")
+							end
 							l_stored_messages := a_mail_account.messages
 							create l_uids.make (mesgs.count)
 							mesgs.start
@@ -727,8 +737,10 @@ feature {NONE} -- Initialization
 							end
 --							l_log.append_string ("%")
 							logger.put_string (l_log)
-							io.error.put_string (l_log)
-							io.error.put_new_line
+							if verbose then
+								io.error.put_string (l_log)
+								io.error.put_new_line
+							end
 
 							if l_uid /= Void and then l_stored_messages.has_key (l_uid) then
 								l_mesg := l_stored_messages.found_item
@@ -741,13 +753,21 @@ feature {NONE} -- Initialization
 								end
 							end
 							if l_mesg = Void or a_force_update then
-								io.error.put_string ("  - downloading...%N")
 								l_mesg := mesgs.item
+
+								io.error.put_string ("  - downloading... = ")
+
 								pop.get_message (l_mesg, nb_lines_to_retrieve)
 								if pop.error then
 									a_mail_account.add_log ("Error while fetching message")
+									io.error.put_string ("ERROR!!!")
+									io.error.put_new_line
+								else
+									io.error.put_string (l_mesg.header_subject)
+									io.error.put_new_line
 								end
 								pop.reset_error
+
 								if l_uid /= Void then
 									l_stored_messages.force (l_mesg, l_uid)
 								end
@@ -829,7 +849,8 @@ feature {NONE} -- Initialization
 			html_output.put_string (html_head (Void))
 
 			html_output.put_string ("<div class=%"account%"><a class=%"rawtext%" href=%"../index.html%">" + a_url.location + "</a></div>%N")
-			if attached a_mail_account.messages_by_date as l_messages then
+			if attached a_mail_account.messages_by_date as l_messages and then not l_messages.is_empty then
+				html_output.put_string ("<div class=%"info%">Messages: " + l_messages.count.out + "</div>%N")
 				from
 					i := l_messages.upper
 					limit := l_messages.lower
@@ -839,99 +860,22 @@ feature {NONE} -- Initialization
 					debug ("popchecker_io")
 						io.put_string (" - report message " + i.out + "%N")
 					end
-					if attached l_messages[i] as l_mesg then
-						create hfn.make_from_string (msgs_dn)
-						hfn.set_file_name (l_mesg.index.out + "-headers")
-						hfn.add_extension ("txt")
-						create f.make (hfn.string)
-						if not f.exists or else f.is_writable then
-							f.open_write -- comment this to make weird crash
-							f.put_string (l_mesg.raw_headers_string)
-							f.close
-						end
-
-						create fn.make_from_string (msgs_dn)
-						fn.set_file_name (l_mesg.index.out)
-						fn.add_extension ("txt")
-						create f.make (fn.string)
-						if not f.exists or else f.is_writable then
-							f.open_write -- comment this to make weird crash
-							f.put_string (l_mesg.raw_message_string)
-							f.close
-						end
-						html_output.put_string ("<div class=%"message%">")
-						html_output.put_string ("<div class=%"line%">")
-						html_output.put_string ("<a href=%"messages/" + l_mesg.index.out  + ".txt%">")
-
-						html_output.put_string ("<span class=%"header%">")
-						html_output.put_string ("#")
-						html_output.put_integer (l_mesg.index)
-						html_output.put_string ("</span>")
-
-						html_output.put_string ("<span class=%"content%">")
-						if attached l_mesg.header_subject as l_text_subject then
-							s := l_text_subject.string
-							s.replace_substring_all ("<", "&lt;")
-							s.replace_substring_all (">", "&gt;")
-							html_output.put_string (" <span class=%"msubject%">" + s + "</span>")
-						end
-						html_output.put_string ("</a>")
-						html_output.put_string ("<br/>&nbsp;&nbsp;&nbsp;&nbsp; ")
-
-						if attached l_mesg.header_from as l_text_from then
-							s := l_text_from.string
-							s.replace_substring_all ("<", "&lt;")
-							s.replace_substring_all (">", "&gt;")
-
-							html_output.put_string (" <span class=%"mfrom%">from: " + s + "</span>")
-						end
-
-						if attached l_mesg.header_to as l_text_to and then l_text_to.count > 0 then
-							s := l_text_to.string
-							s.replace_substring_all ("<", "&lt;")
-							s.replace_substring_all (">", "&gt;")
-							html_output.put_string (" <span class=%"mfrom%">to: " + s + "</span>")
-						end
-
-						if attached l_mesg.header_date as l_text_date then
-							if attached l_mesg.header_date_time as l_dt then
-								html_output.put_string (" <span class=%"mdate%">")
-								html_output.put_integer (l_dt.year)
-								html_output.put_character ('/')
-								if l_dt.month < 10 then
-									html_output.put_integer (0)
-								end
-								html_output.put_integer (l_dt.month)
-								html_output.put_character ('/')
-								if l_dt.day < 10 then
-									html_output.put_integer (0)
-								end
-								html_output.put_integer (l_dt.day)
-								html_output.put_character ('-')
-								if l_dt.hour < 10 then
-									html_output.put_integer (0)
-								end
-								html_output.put_integer (l_dt.hour)
-								html_output.put_character (':')
-								if l_dt.minute < 10 then
-									html_output.put_integer (0)
-								end
-								html_output.put_integer (l_dt.minute)
-								html_output.put_string ("</span>")
-							else
-								html_output.put_string (" <span class=%"mdate%">" + l_text_date + "</span>")
-							end
-						end
-						html_output.put_string ("</span>")
-						html_output.put_string ("<span class=%"header-opt%">")
-						if attached l_mesg.uid as l_text_uid then
-							html_output.put_string (" &lt;" + l_text_uid + "&gt;")
-						end
-						html_output.put_string (" <a class=%"rawheaders%" href=%"messages/" + l_mesg.index.out  + "-headers.txt%">(headers)</a>")
-						html_output.put_string ("</span>")
-						html_output.put_string ("</div>%N")
-						html_output.put_string ("</div>%N%N")
+					report_message ("", l_messages[i], html_output, msgs_dn)
+					i := i - 1
+				end
+			end
+			if attached a_mail_account.offline_messages_by_date as l_messages and then not l_messages.is_empty then
+				html_output.put_string ("<div class=%"info%">Offline messages: " + l_messages.count.out + "</div>%N")
+				from
+					i := l_messages.upper
+					limit := l_messages.lower
+				until
+					i < limit
+				loop
+					debug ("popchecker_io")
+						io.put_string (" - report offline message " + i.out + "%N")
 					end
+					report_message ("off", l_messages[i], html_output, msgs_dn)
 					i := i - 1
 				end
 			end
@@ -941,6 +885,112 @@ feature {NONE} -- Initialization
 			debug ("popchecker_io")
 				io.put_string ("Account reporting completed.")
 			end
+		end
+
+	report_message (a_kind: STRING; a_mesg: POP3_MESSAGE; html_output: FILE; msgs_dn: DIRECTORY_NAME)
+		local
+			dhfn, dfn, hfn, fn: FILE_NAME
+			f: PLAIN_TEXT_FILE
+			s: detachable STRING
+			l_output: FILE
+		do
+			create dhfn.make_from_string (a_kind + a_mesg.index.out + "-headers")
+			dhfn.add_extension ("txt")
+
+			create hfn.make_from_string (msgs_dn)
+			hfn.set_file_name (dhfn.string)
+
+			create f.make (hfn.string)
+			if not f.exists or else f.is_writable then
+				f.open_write -- comment this to make weird crash
+				f.put_string (a_mesg.raw_headers_string)
+				f.close
+			end
+
+			create dfn.make_from_string (a_kind + a_mesg.index.out)
+			dfn.add_extension ("txt")
+
+			create fn.make_from_string (msgs_dn)
+			fn.set_file_name (dfn.string)
+
+			create f.make (fn.string)
+			if not f.exists or else f.is_writable then
+				f.open_write -- comment this to make weird crash
+				f.put_string (a_mesg.raw_message_string)
+				f.close
+			end
+			html_output.put_string ("<div class=%"message%">")
+			html_output.put_string ("<div class=%"line%">")
+			html_output.put_string ("<a href=%"messages/" + dfn  + "%">")
+
+			html_output.put_string ("<span class=%"header%">")
+			html_output.put_string ("#")
+			html_output.put_integer (a_mesg.index)
+			html_output.put_string ("</span>")
+
+			html_output.put_string ("<span class=%"content%">")
+			if attached a_mesg.header_subject as l_text_subject then
+				s := l_text_subject.string
+				s.replace_substring_all ("<", "&lt;")
+				s.replace_substring_all (">", "&gt;")
+				html_output.put_string (" <span class=%"msubject%">" + s + "</span>")
+			end
+			html_output.put_string ("</a>")
+			html_output.put_string ("<br/>&nbsp;&nbsp;&nbsp;&nbsp; ")
+
+			if attached a_mesg.header_from as l_text_from then
+				s := l_text_from.string
+				s.replace_substring_all ("<", "&lt;")
+				s.replace_substring_all (">", "&gt;")
+
+				html_output.put_string (" <span class=%"mfrom%">from: " + s + "</span>")
+			end
+
+			if attached a_mesg.header_to as l_text_to and then l_text_to.count > 0 then
+				s := l_text_to.string
+				s.replace_substring_all ("<", "&lt;")
+				s.replace_substring_all (">", "&gt;")
+				html_output.put_string (" <span class=%"mfrom%">to: " + s + "</span>")
+			end
+
+			if attached a_mesg.header_date as l_text_date then
+				if attached a_mesg.header_date_time as l_dt then
+					html_output.put_string (" <span class=%"mdate%">")
+					html_output.put_integer (l_dt.year)
+					html_output.put_character ('/')
+					if l_dt.month < 10 then
+						html_output.put_integer (0)
+					end
+					html_output.put_integer (l_dt.month)
+					html_output.put_character ('/')
+					if l_dt.day < 10 then
+						html_output.put_integer (0)
+					end
+					html_output.put_integer (l_dt.day)
+					html_output.put_character ('-')
+					if l_dt.hour < 10 then
+						html_output.put_integer (0)
+					end
+					html_output.put_integer (l_dt.hour)
+					html_output.put_character (':')
+					if l_dt.minute < 10 then
+						html_output.put_integer (0)
+					end
+					html_output.put_integer (l_dt.minute)
+					html_output.put_string ("</span>")
+				else
+					html_output.put_string (" <span class=%"mdate%">" + l_text_date + "</span>")
+				end
+			end
+			html_output.put_string ("</span>")
+			html_output.put_string ("<span class=%"header-opt%">")
+			if attached a_mesg.uid as l_text_uid then
+				html_output.put_string (" &lt;" + l_text_uid + "&gt;")
+			end
+			html_output.put_string (" <a class=%"rawheaders%" href=%"messages/" + dhfn  + "%">(headers)</a>")
+			html_output.put_string ("</span>")
+			html_output.put_string ("</div>%N")
+			html_output.put_string ("</div>%N%N")
 		end
 
 	html_head (a_title: detachable STRING): STRING
