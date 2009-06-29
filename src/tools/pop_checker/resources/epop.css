@@ -38,6 +38,21 @@ div.message:hover {
 .mdate {font-style: italic; color: #600; }
 .content {color: #000; }
 .jq {color: #F00; border: solid 2px #f00; }
+
+#accounts  li {
+	border-bottom: dotted 1px #99f;
+	padding: 3px;
+}
+#accounts li:hover, #accounts li:hover a {
+	background-color: #009;
+	color: white;
+}
+
+#accounts .new {
+	font-weight: bold;
+	font-color: #f00;
+}
+
 #pop {
 	display: none; 
 	position: absolute;

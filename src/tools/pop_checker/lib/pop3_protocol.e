@@ -311,29 +311,33 @@ feature -- Status setting
 					io.put_string ("Messages: " + s.substring (4, s.count) + "%N")
 				end
 				if attached multiple_line_answer as lines then
-					create Result.make (lines.count - 1)
-					from
-						lines.start
-					until
-						lines.after
-					loop
-						s := lines.item
-						if not s.is_empty then
-							p := s.index_of (' ', 1)
-							i := s.substring (1, p).to_integer
-							n := s.substring (p + 1, s.count).to_integer
-							create m.make (i)
-							m.set_size (n)
-							Result.force (m)
-						else
-							debug
-								io.error.put_string ("Error with [" + s + "]%N")
+					if lines.is_empty then
+						create Result.make (0)
+					else
+						create Result.make (lines.count - 1)
+						from
+							lines.start
+						until
+							lines.after
+						loop
+							s := lines.item
+							if not s.is_empty then
+								p := s.index_of (' ', 1)
+								i := s.substring (1, p).to_integer
+								n := s.substring (p + 1, s.count).to_integer
+								create m.make (i)
+								m.set_size (n)
+								Result.force (m)
+							else
+								debug
+									io.error.put_string ("Error with [" + s + "]%N")
+								end
 							end
+							lines.forth
 						end
-						lines.forth
-					end
-					debug
-						io.put_string (s)
+						debug
+							io.put_string (s)
+						end
 					end
 				end
 			else
@@ -367,35 +371,38 @@ feature -- Status setting
 					io.put_string ("Message UIDs: " + s.substring (4, s.count) + "%N")
 				end
 				if attached multiple_line_answer as lines then
-					create Result.make (lines.count - 1)
-					from
-						lines.start
-					until
-						lines.after
-					loop
-						s := lines.item
-						if not s.is_empty then
-							p := s.index_of (' ', 1)
-							i := s.substring (1, p).to_integer
-							uid := s.substring (p + 1, s.count)
-							create m.make_with_uid (i, uid)
-							Result.force (m)
-						else
-							debug
-								io.put_string ("Error with [" + s + "]%N")
+					if lines.is_empty then
+						create Result.make (0)
+					else
+						create Result.make (lines.count - 1)
+						from
+							lines.start
+						until
+							lines.after
+						loop
+							s := lines.item
+							if not s.is_empty then
+								p := s.index_of (' ', 1)
+								i := s.substring (1, p).to_integer
+								uid := s.substring (p + 1, s.count)
+								create m.make_with_uid (i, uid)
+								Result.force (m)
+							else
+								debug
+									io.put_string ("Error with [" + s + "]%N")
+								end
 							end
+							lines.forth
 						end
-						lines.forth
-					end
-					debug
-						io.put_string (s)
+						debug
+							io.put_string (s)
+						end
 					end
 				end
 			else
 				error_code := Wrong_command
 			end
 		end
-
 
 	query_retrieve_message (a_msg_number: INTEGER)
 		require

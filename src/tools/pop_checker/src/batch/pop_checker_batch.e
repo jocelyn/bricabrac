@@ -172,6 +172,7 @@ feature {NONE} -- Initialization
 	check_profiles (a_profiles: like profiles; open_index_file: BOOLEAN)
 		local
 			n: detachable STRING
+			nb: INTEGER
 			l_profile: like profile
 			fn: FILE_NAME
 			f: detachable PLAIN_TEXT_FILE
@@ -181,7 +182,7 @@ feature {NONE} -- Initialization
 			create f.make (fn)
 			if not f.exists or else f.is_writable then
 				f.open_write
-				f.put_string (html_head ("Indexes"))
+				f.put_string (accounts_html_head ("Indexes"))
 				f.put_string ("<h1>Checking emails</h1>%N")
 				f.put_string ("<ul>%N")
 			else
@@ -208,6 +209,14 @@ feature {NONE} -- Initialization
 					if f /= Void then
 						if l_profile.enabled then
 							if attached data (l_profile.uuid) as l_data then
+								nb := l_data.new_messages_count
+								if nb > 0 then
+									f.put_string ("<span class=%"new%">")
+									f.put_integer (nb)
+									f.put_string ("new")
+									f.put_string ("</span>")
+									f.put_string (" out of ")
+								end
 								f.put_integer (l_data.messages_count)
 								f.put_string (" message(s)")
 								if l_data.counter > 0 then
@@ -705,8 +714,7 @@ feature {NONE} -- Initialization
 						pop.reset_error
 						mesgs := pop.message_id_list (0)
 					end
-					if not pop.error then
-						check mesgs /= Void end
+					if not pop.error and mesgs /= Void then
 						from
 							a_mail_account.keep (mesgs)
 							n := mesgs.count - a_mail_account.messages_count
@@ -715,6 +723,7 @@ feature {NONE} -- Initialization
 								io.error.put_integer (n)
 								io.error.put_string (" new messages%N")
 							end
+							a_mail_account.set_new_messages_count (n)
 							l_stored_messages := a_mail_account.messages
 							create l_uids.make (mesgs.count)
 							mesgs.start
@@ -726,16 +735,15 @@ feature {NONE} -- Initialization
 							l_uid := l_mesg.uid
 							l_index := l_mesg.index
 							l_mesg := Void
-							create l_log.make_from_string ("Message: #")
+							create l_log.make_from_string ("  #")
 							l_log.append_integer (l_index)
 							if l_msg_count > 0 then
-							 	l_log.append_string (" / ")
+							 	l_log.append_string ("/")
 							 	l_log.append_integer (l_msg_count)
 							end
 							if l_uid /= Void then
 								l_log.append_string (" <" + l_uid + ">")
 							end
---							l_log.append_string ("%")
 							logger.put_string (l_log)
 							if verbose then
 								io.error.put_string (l_log)
@@ -754,16 +762,19 @@ feature {NONE} -- Initialization
 							end
 							if l_mesg = Void or a_force_update then
 								l_mesg := mesgs.item
-
-								io.error.put_string ("  - downloading... = ")
+								if not verbose then
+									io.error.put_string (l_log)
+									io.error.put_new_line
+								end
+								io.error.put_string ("  GET: ")
 
 								pop.get_message (l_mesg, nb_lines_to_retrieve)
 								if pop.error then
-									a_mail_account.add_log ("Error while fetching message")
-									io.error.put_string ("ERROR!!!")
+									a_mail_account.add_log ("  Error while fetching message")
+									io.error.put_string ("  ERROR!!!")
 									io.error.put_new_line
 								else
-									io.error.put_string (l_mesg.header_subject)
+									io.error.put_string (l_mesg.to_string)
 									io.error.put_new_line
 								end
 								pop.reset_error
@@ -777,7 +788,7 @@ feature {NONE} -- Initialization
 								end
 								l_mesg.update_index (l_index)
 							end
-							logger.put_string (l_mesg.to_string + "")
+							logger.put_string (l_mesg.to_string)
 
 							mesgs.forth
 						end
@@ -797,7 +808,7 @@ feature {NONE} -- Initialization
 					pop.close
 				end
 			else
-				if pop /= Void then
+				if pop /= Void and then pop.error then
 					a_mail_account.add_log ("Error occurred [" + pop.error_text (pop.error_code) + "]")
 				else
 					a_mail_account.add_log ("Error occurred")
@@ -836,6 +847,9 @@ feature {NONE} -- Initialization
 				dir.create_dir
 			end
 			create dir.make (msgs_dn.string)
+			if dir.exists then
+				dir.recursive_delete
+			end
 			if not dir.exists then
 				dir.create_dir
 			end
@@ -846,7 +860,7 @@ feature {NONE} -- Initialization
 			create fn.make_from_string (dn)
 			fn.set_file_name ("index.html")
 			create html_output.make_open_write (fn.string)
-			html_output.put_string (html_head (Void))
+			html_output.put_string (account_html_head (Void))
 
 			html_output.put_string ("<div class=%"account%"><a class=%"rawtext%" href=%"../index.html%">" + a_url.location + "</a></div>%N")
 			if attached a_mail_account.messages_by_date as l_messages and then not l_messages.is_empty then
@@ -954,29 +968,9 @@ feature {NONE} -- Initialization
 			end
 
 			if attached a_mesg.header_date as l_text_date then
-				if attached a_mesg.header_date_time as l_dt then
+				if attached a_mesg.header_date_time_yyyymmdd_hhmm as l_dt then
 					html_output.put_string (" <span class=%"mdate%">")
-					html_output.put_integer (l_dt.year)
-					html_output.put_character ('/')
-					if l_dt.month < 10 then
-						html_output.put_integer (0)
-					end
-					html_output.put_integer (l_dt.month)
-					html_output.put_character ('/')
-					if l_dt.day < 10 then
-						html_output.put_integer (0)
-					end
-					html_output.put_integer (l_dt.day)
-					html_output.put_character ('-')
-					if l_dt.hour < 10 then
-						html_output.put_integer (0)
-					end
-					html_output.put_integer (l_dt.hour)
-					html_output.put_character (':')
-					if l_dt.minute < 10 then
-						html_output.put_integer (0)
-					end
-					html_output.put_integer (l_dt.minute)
+					html_output.put_string (l_dt)
 					html_output.put_string ("</span>")
 				else
 					html_output.put_string (" <span class=%"mdate%">" + l_text_date + "</span>")
@@ -993,7 +987,27 @@ feature {NONE} -- Initialization
 			html_output.put_string ("</div>%N%N")
 		end
 
-	html_head (a_title: detachable STRING): STRING
+	accounts_html_head (a_title: detachable STRING): STRING
+		do
+			create Result.make_empty
+			Result.append_string ("<html><head>")
+			Result.append_string ("<title>")
+			if a_title /= Void then
+				Result.append_string (a_title)
+			else
+				Result.append_string ("Email accounts")
+			end
+			Result.append_string ("</title>%N")
+			Result.append_string ("[
+					<link rel="stylesheet" type="text/css" href="../res/epop.css" />
+					<script type="text/javascript" src="../res/jquery.js"></script>
+					<script type="text/javascript" src="../res/epop.js"></script>
+				]");
+			Result.append_string ("%N</head><body>%N")
+			Result.append_string ("<div id=%"accounts%" >%N")
+		end
+
+	account_html_head (a_title: detachable STRING): STRING
 		do
 			create Result.make_empty
 			Result.append_string ("<html><head>")

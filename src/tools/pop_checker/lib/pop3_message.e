@@ -65,6 +65,31 @@ feature -- Access
 			end
 		end
 
+	header_date_time_yyyymmdd_hhmm: detachable STRING
+		do
+			if attached header_date_time as d then
+				create Result.make (12)
+				Result.append_integer (d.year)
+				Result.append_character ('/')
+				if d.month < 10 then Result.append_integer (0) end
+				Result.append_integer (d.month)
+				Result.append_character ('/')
+				if d.day < 10 then Result.append_integer (0) end
+				Result.append_integer (d.day)
+
+				Result.append_character ('-')
+
+				if d.hour < 10 then Result.append_integer (0) end
+				Result.append_integer (d.hour)
+				Result.append_character (':')
+				if d.minute < 10 then Result.append_integer (0) end
+				Result.append_integer (d.minute)
+--				Result.append_character (':')				
+--				if d.second < 10 then Result.append_integer (0) end								
+--				Result.append_integer (d.second)
+			end
+		end
+
 	status: INTEGER
 
 	is_read: BOOLEAN
@@ -161,13 +186,15 @@ feature -- status report
 		do
 			create Result.make_empty
 			if attached header_subject as l_subject then
-				Result.append_string ("SUBJECT=%"" + l_subject + "%"" )
+				Result.append_string ("%"" + l_subject + "%"" )
 			end
 			if attached header_from as l_from then
-				Result.append_string (" FROM [" + l_from + "]" )
+				Result.append_string (" from: " + l_from)
 			end
-			if attached header_date as l_date then
-				Result.append_string (" (DATE:" + l_date + ")" )
+			if attached header_date_time_yyyymmdd_hhmm as l_date then
+				Result.append_string (" (date:" + l_date + ")" )
+			elseif attached header_date as l_date then
+				Result.append_string (" (date:" + l_date + ")" )
 			end
 		end
 
@@ -229,7 +256,7 @@ feature -- Element change
 					p := s.index_of (':', 1)
 					check p > 0 end
 					hk := s.substring (1, p - 1)
-					hv := s.substring (p + 1 + 1, s.count) --| there is a space after the ':'
+					hv := s.substring (p + 1, s.count)
 					if headers.has_key (hk) then
 						hv_k := headers.found_item
 						check hv_k /= Void end -- implied by `has_key'

@@ -37,6 +37,8 @@ feature -- Access
 			end
 		end
 
+	new_messages_count: INTEGER
+
 	counter: NATURAL_64
 
 	messages_by_index: ARRAY [POP3_MESSAGE]
@@ -103,7 +105,7 @@ feature -- Access
 				end
 				lst.sort (message_sorter_by_date)
 				if attached lst.to_array as arr then
-					Result := lst.to_array
+					Result := arr
 				else
 					Result := <<>>
 					check should_not_occur: False end
@@ -204,9 +206,9 @@ feature -- Basic operations
 					mesgs.remove (l_uid)
 				end
 			end
---			if attached offline_messages as l_offs then
---				update_offline_messages (l_offs)
---			end
+			if attached offline_messages as l_offs then
+				update_offline_messages (l_offs)
+			end
 		end
 
 	record_offline (a_msg: POP3_MESSAGE)
@@ -228,20 +230,27 @@ feature -- Basic operations
 			a_msg.reset_index
 		end
 
---	update_offline_messages (a_offline_messages: like offline_messages)
---		do
---			from
---				a_offline_messages.start
---			until
---				a_offline_messages.after
---			loop
---				if attached a_offline_messages.item as l_off then
---					l_off.message.update_index (l_off.id.to_integer_32)
---				end
---				a_offline_messages.forth
---			end
---		end
+	update_offline_messages (a_offline_messages: like offline_messages)
+		do
+			if a_offline_messages /= Void then
+				from
+					a_offline_messages.start
+				until
+					a_offline_messages.after
+				loop
+					if attached a_offline_messages.item as l_off then
+						l_off.message.update_index (l_off.id.to_integer_32)
+					end
+					a_offline_messages.forth
+				end
+			end
+		end
 
 feature -- Element change
+
+	set_new_messages_count (n: like new_messages_count)
+		do
+			new_messages_count := n
+		end
 
 end
