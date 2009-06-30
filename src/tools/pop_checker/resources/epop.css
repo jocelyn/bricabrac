@@ -111,5 +111,12 @@ div#log {
 	display: inline;
 	margin-right: 10px;
 	float: right;
-
+}
+a span.location {
+	/* display: none; */
+	color: #aaf;
+	margin-top: -10px;
+	float: right;
+	font-style: italic;
+	font-size: 65%;
 }

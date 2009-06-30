@@ -21,7 +21,7 @@ feature {NONE} -- Initialization
 			i: INTEGER
 			l_profile: like profile
 			l_profiles: like profiles
-			n, l_username, l_password: detachable STRING
+			n, l_username, l_password, l_title: detachable STRING
 --			l_pop3_location: POP3_LOCATION
 		do
 			if attached command_line.separate_word_option_value ("p") as l_dir then
@@ -69,10 +69,23 @@ feature {NONE} -- Initialization
 						io.read_line
 						l_password := io.last_string.string
 					end
+					i := command_line.index_of_word_option ("-title")
+					if i > 0 then
+						l_title := command_line.argument (i + 1)
+					end
+					if l_title = Void or else l_title.is_empty then
+						io.put_string ("Title?")
+						io.read_line
+						l_title := io.last_string.string
+					end
 
 					check not l_username.is_empty and not l_password.is_empty end
 					create l_profile.make_from_location (n, l_username, l_password)
+					if l_title /= Void then
+						l_profile.set_title (l_title)
+					end
 					l_profile.enable
+
 					debug ("popchecker_io")
 						io.put_string ("Saving profiles%N")
 					end
@@ -80,8 +93,8 @@ feature {NONE} -- Initialization
 					debug ("popchecker_io")
 						io.put_string ("Checking email for profile%N")
 					end
---					check_profile_authentication (l_profile)
-					check_profile_and_report (l_profile)
+					check_profile_authentication (l_profile)
+--					check_profile_and_report (l_profile)
 				end
 			else
 				i := command_line.index_of_word_option ("-export")
@@ -169,6 +182,48 @@ feature {NONE} -- Initialization
 			end
 		end
 
+	profiles_sorted_by_title (a_profiles: like profiles): ARRAY [POP3_PROFILE]
+		local
+			n: detachable STRING
+			l_profile: like profile
+			sorted_titles: SORTED_TWO_WAY_LIST [STRING_32]
+			profiles_by_title: HASH_TABLE [POP3_PROFILE, STRING_32]
+			t: STRING_32
+			i: INTEGER
+		do
+			from
+				create sorted_titles.make
+				create profiles_by_title.make (a_profiles.count)
+				a_profiles.start
+			until
+				a_profiles.after
+			loop
+				n := a_profiles.item
+				l_profile := profile (n)
+				if l_profile /= Void then
+					t := l_profile.title
+					sorted_titles.force (t)
+					profiles_by_title.force (l_profile, t)
+				end
+				a_profiles.forth
+			end
+			create Result.make (1, a_profiles.count)
+			from
+				sorted_titles.start
+				i := 1
+			until
+				sorted_titles.after
+			loop
+				t := sorted_titles.item
+				l_profile := profiles_by_title.item (t)
+				if l_profile /= Void then
+					Result [i] := l_profile
+					i := i + 1
+				end
+				sorted_titles.forth
+			end
+		end
+
 	check_profiles (a_profiles: like profiles; open_index_file: BOOLEAN)
 		local
 			n: detachable STRING
@@ -176,6 +231,10 @@ feature {NONE} -- Initialization
 			l_profile: like profile
 			fn: FILE_NAME
 			f: detachable PLAIN_TEXT_FILE
+			t: STRING_32
+			l: STRING
+			i: INTEGER
+			sorted_profiles: like profiles_sorted_by_title
 		do
 			create fn.make_from_string (offline_directory)
 			fn.set_file_name ("index.html")
@@ -189,54 +248,63 @@ feature {NONE} -- Initialization
 				f := Void
 			end
 
-			from
-				a_profiles.start
-			until
-				a_profiles.after
-			loop
-				n := a_profiles.item
-				l_profile := profile (n)
-				if l_profile /= Void then
-					if f /= Void then
-						f.put_string ("<li><a class=%"profile%" href=%"" + l_profile.uuid + "/" + "index.html%">")
-						f.put_string (l_profile.location)
-						f.put_string ("</a> : ")
-						f.flush
-					end
-					if l_profile.enabled then
-						check_profile (l_profile)
-					end
-					if f /= Void then
-						if l_profile.enabled then
-							if attached data (l_profile.uuid) as l_data then
-								nb := l_data.new_messages_count
-								if nb > 0 then
-									f.put_string ("<span class=%"new%">")
-									f.put_integer (nb)
-									f.put_string (" new")
-									f.put_string ("</span>")
-									f.put_string (" out of ")
-								end
-								f.put_integer (l_data.messages_count)
-								f.put_string (" message(s)")
-								if l_data.counter > 0 then
-									f.put_string (" (")
-									f.put_natural_64 (l_data.counter)
-									f.put_string (" archived)")
-								end
-								if attached l_data.logs as l_logs and then not l_logs.is_empty then
-									f.put_string (" - <i>" + l_logs + "</i>")
-								end
-
+			sorted_profiles := profiles_sorted_by_title (a_profiles)
+			if not sorted_profiles.is_empty then
+				from
+					i := sorted_profiles.lower
+				until
+					i > sorted_profiles.upper
+				loop
+					l_profile := sorted_profiles [i]
+					if l_profile /= Void then
+						t := l_profile.title
+						l := l_profile.location
+						if f /= Void then
+							f.put_string ("<li><a class=%"profile%" href=%"" + l_profile.uuid + "/" + "index.html%">")
+							if t ~ l then
+								f.put_string (t)
+							else
+								f.put_string (t)
+								f.put_string ("<span class=%"location%">: " + l + "</span>")
 							end
-						else
-							f.put_string ("disabled")
+							f.put_string ("</a> : ")
+							f.flush
 						end
-						f.put_string ("</li>%N")
-						f.flush
+						if l_profile.enabled then
+							check_profile (l_profile)
+						end
+						if f /= Void then
+							if l_profile.enabled then
+								if attached data (l_profile.uuid) as l_data then
+									nb := l_data.new_messages_count
+									if nb > 0 then
+										f.put_string ("<span class=%"new%">")
+										f.put_integer (nb)
+										f.put_string (" new")
+										f.put_string ("</span>")
+										f.put_string (" out of ")
+									end
+									f.put_integer (l_data.messages_count)
+									f.put_string (" message(s)")
+									if l_data.counter > 0 then
+										f.put_string (" (")
+										f.put_natural_64 (l_data.counter)
+										f.put_string (" archived)")
+									end
+									if attached l_data.logs as l_logs and then not l_logs.is_empty then
+										f.put_string (" - <i>" + l_logs + "</i>")
+									end
+
+								end
+							else
+								f.put_string ("disabled")
+							end
+							f.put_string ("</li>%N")
+							f.flush
+						end
 					end
+					i := i + 1
 				end
-				a_profiles.forth
 			end
 			if f /= Void then
 				f.put_string ("</ul>%N")
@@ -259,6 +327,8 @@ feature {NONE} -- Initialization
 			l_profile: detachable POP3_PROFILE
 			l_location: POP3_URL
 			s, n, q: detachable STRING
+			t: STRING_32
+			l: STRING
 			i,m: INTEGER
 			profs: ARRAY [POP3_PROFILE]
 		do
@@ -270,7 +340,13 @@ feature {NONE} -- Initialization
 				n := a_profiles.item
 				l_profile := profile (n)
 				if l_profile /= Void then
-					print ("Profile: " + l_profile.location + " [" + n + "]%N")
+					t := l_profile.title
+					l := l_profile.location
+
+					print ("Profile: " + l + " [" + n + "]%N")
+					if t /~ l then
+						print ("  Title   =" + t + "%N")
+					end
 					print ("  Host    =" + l_profile.host)
 					if l_profile.port > 0 then
 						print (":" + l_profile.port.out)
@@ -281,6 +357,7 @@ feature {NONE} -- Initialization
 					print ("  -add " + l_profile.location
 							+ " --username " + l_profile.username
 							+ " --password " + l_profile.password
+							+ " --title %"" + t + "%""
 							+ "%N")
 				end
 				a_profiles.forth
@@ -297,28 +374,17 @@ feature {NONE} -- Initialization
 			s, n, q, r: detachable STRING
 			i,m: INTEGER
 			profs: ARRAY [POP3_PROFILE]
+			l_profiles_sorted_by_title: like profiles_sorted_by_title
+			p: INTEGER
 		do
 			from
 				i := 0
 			until
 				i = -1
 			loop
-				if a_profiles.count > 0 then
-					from
-						a_profiles.start
-						create profs.make (1, a_profiles.count)
-						i := 0
-					until
-						a_profiles.after
-					loop
-						n := a_profiles.item
-						l_profile := profile (n)
-						if l_profile /= Void then
-							i := i + 1
-							profs [i] := l_profile
-						end
-						a_profiles.forth
-					end
+				l_profiles_sorted_by_title := profiles_sorted_by_title (a_profiles)
+				if l_profiles_sorted_by_title.count > 0 then
+					profs := l_profiles_sorted_by_title
 					from
 						i := profs.lower
 					until
@@ -508,6 +574,16 @@ feature {NONE} -- Initialization
 			if not s.is_empty then
 				a_prof.set_password (s.string)
 			end
+
+			print ("Title ")
+			if attached a_prof.title as t then
+				print ("(" + t + ")")
+			end
+			print (": ")
+			io.read_line; s := io.last_string; s.right_adjust
+			if not s.is_empty then
+				a_prof.set_title (s.string)
+			end
 		end
 
 	delete_this_profile (a_prof: POP3_PROFILE)
@@ -516,8 +592,18 @@ feature {NONE} -- Initialization
 		end
 
 	display_profile (a_prof: POP3_PROFILE; d: INTEGER)
+		local
+			t: STRING_32
+			l: STRING
 		do
-			print ("Profile [" + a_prof.location + "]")
+			print ("Profile [")
+			t := a_prof.title
+			l := a_prof.location
+			if t /~ l then
+				print (t + " ~ ")
+			end
+			print (l + "]")
+
 			if a_prof.enabled then
 				print (" - enabled - ")
 			else
@@ -609,7 +695,7 @@ feature {NONE} -- Initialization
 			debug ("popchecker_io")
 				io.put_string ("Saving messages: completed%N")
 			end
-			report_account (a_url, l_data)
+			report_account (a_uuid, a_url, l_data)
 			debug ("popchecker_io")
 				io.put_string ("Reporting completed%N")
 			end
@@ -832,7 +918,7 @@ feature {NONE} -- Initialization
 			retry
 		end
 
-	report_account (a_url: POP3_URL; a_mail_account: POP3_MESSAGES_DATA)
+	report_account (a_uuid: STRING; a_url: POP3_URL; a_mail_account: POP3_MESSAGES_DATA)
 		local
 			i,limit: INTEGER
 			s: detachable STRING
@@ -843,7 +929,17 @@ feature {NONE} -- Initialization
 			f: PLAIN_TEXT_FILE
 			html_output: PLAIN_TEXT_FILE
 			m: POP3_MESSAGE
+			t: STRING_32
+			l: STRING
 		do
+			if attached profile (a_uuid) as l_profile then
+				t := l_profile.title
+				l := l_profile.location
+			else
+				l := a_url.location
+				t := l.to_string_32
+			end
+
 			create dn.make_from_string (offline_directory)
 			dn.extend (a_mail_account.file_name)
 
@@ -870,7 +966,15 @@ feature {NONE} -- Initialization
 			create html_output.make_open_write (fn.string)
 			html_output.put_string (account_html_head (Void))
 
-			html_output.put_string ("<div class=%"account%"><a class=%"rawtext%" href=%"../index.html%">" + a_url.location + "</a></div>%N")
+			html_output.put_string ("<div class=%"account%"><a class=%"rawtext%" href=%"../index.html%">")
+			if t ~ l then
+				html_output.put_string (l)
+			else
+				html_output.put_string (t)
+				html_output.put_string ("<span class=%"location%"> : " + l + "</span>")
+			end
+
+			html_output.put_string ("</a></div>%N")
 			if attached a_mail_account.messages_by_date as l_messages and then not l_messages.is_empty then
 				html_output.put_string ("<div class=%"info%">Messages: " + l_messages.count.out + "</div>%N")
 				from

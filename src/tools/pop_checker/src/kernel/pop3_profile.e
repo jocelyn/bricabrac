@@ -10,6 +10,8 @@ class
 inherit
 	POP3_UTILITIES
 
+	MISMATCH_CORRECTOR
+
 create
 	make,
 	make_from_location
@@ -23,6 +25,7 @@ feature {NONE} -- Initialization
 			port := a_port
 			username := a_username
 			password := a_password
+			title := location
 			enable
 		end
 
@@ -33,11 +36,15 @@ feature {NONE} -- Initialization
 		local
 			p,q,r: INTEGER
 			a,s: detachable STRING
+			l_username: like username
+			l_password: like password
+			l_port: like port
+			l_host: like host
 		do
 			create_uuid
-			password := a_password
+			l_password := a_password
 			if a_username /= Void then
-				username := a_username
+				l_username := a_username
 			end
 
 			p := a_location.index_of (':', 1)
@@ -52,33 +59,36 @@ feature {NONE} -- Initialization
 				s := a_location.substring (q + 1, a_location.count)
 				p := a.index_of (';', 1)
 				if p > 0 then
-					username := a.substring (1, p - 1)
+					l_username := a.substring (1, p - 1)
 					--| FIXME: handle the auth parameter
 				else
-					username := a
+					l_username := a
 				end
-				raw_url_decode (username)
+				raw_url_decode (l_username)
 			else
 				check attached a_username end
-				username := a_username
+				l_username := a_username
 				s := a_location.substring (p, a_location.count)
 			end
 			p := s.index_of (':', 1)
 			if p > 0 then
-				host := s.substring (1, p - 1)
+				l_host := s.substring (1, p - 1)
 				s.remove_head (p)
 				if s.is_integer then
-					port := s.to_integer
+					l_port := s.to_integer
 				end
 			else
-				host := s
+				l_host := s
 			end
-			enable
+--			check host = Void and username = Void and password = Void and port = 0 end
+			make (l_host, l_port, l_username, l_password)
 		ensure
 			host_attached: host /= Void
 		end
 
 feature -- Access
+
+	title: STRING_32
 
 	uuid: STRING
 
@@ -130,6 +140,11 @@ feature -- Element change
 	set_password (v: like password)
 		do
 			password := v
+		end
+
+	set_title (v: like title)
+		do
+			title := v
 		end
 
 feature -- status
