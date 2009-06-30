@@ -213,7 +213,7 @@ feature {NONE} -- Initialization
 								if nb > 0 then
 									f.put_string ("<span class=%"new%">")
 									f.put_integer (nb)
-									f.put_string ("new")
+									f.put_string (" new")
 									f.put_string ("</span>")
 									f.put_string (" out of ")
 								end
@@ -685,6 +685,7 @@ feature {NONE} -- Initialization
 			l_log: detachable STRING
 			n: INTEGER
 			retried: BOOLEAN
+			l_is_new: BOOLEAN
 		do
 			if not retried then
 					-- update location
@@ -751,6 +752,7 @@ feature {NONE} -- Initialization
 							end
 
 							if l_uid /= Void and then l_stored_messages.has_key (l_uid) then
+								l_is_new := False
 								l_mesg := l_stored_messages.found_item
 								check l_mesg /= Void end
 								if
@@ -759,6 +761,8 @@ feature {NONE} -- Initialization
 								then
 									l_mesg := Void
 								end
+							else
+								l_is_new := True
 							end
 							if l_mesg = Void or a_force_update then
 								l_mesg := mesgs.item
@@ -787,6 +791,9 @@ feature {NONE} -- Initialization
 									io.put_string ("  - already downloaded...%N")
 								end
 								l_mesg.update_index (l_index)
+							end
+							if l_is_new then
+								a_mail_account.record_new_message (l_mesg)
 							end
 							logger.put_string (l_mesg.to_string)
 
@@ -835,6 +842,7 @@ feature {NONE} -- Initialization
 			dir: DIRECTORY
 			f: PLAIN_TEXT_FILE
 			html_output: PLAIN_TEXT_FILE
+			m: POP3_MESSAGE
 		do
 			create dn.make_from_string (offline_directory)
 			dn.extend (a_mail_account.file_name)
@@ -874,7 +882,8 @@ feature {NONE} -- Initialization
 					debug ("popchecker_io")
 						io.put_string (" - report message " + i.out + "%N")
 					end
-					report_message ("", l_messages[i], html_output, msgs_dn)
+					m := l_messages[i]
+					report_message ("", m, html_output, msgs_dn, a_mail_account.is_new_message (m))
 					i := i - 1
 				end
 			end
@@ -889,7 +898,8 @@ feature {NONE} -- Initialization
 					debug ("popchecker_io")
 						io.put_string (" - report offline message " + i.out + "%N")
 					end
-					report_message ("off", l_messages[i], html_output, msgs_dn)
+					m := l_messages[i]
+					report_message ("off", m, html_output, msgs_dn, False)
 					i := i - 1
 				end
 			end
@@ -901,7 +911,7 @@ feature {NONE} -- Initialization
 			end
 		end
 
-	report_message (a_kind: STRING; a_mesg: POP3_MESSAGE; html_output: FILE; msgs_dn: DIRECTORY_NAME)
+	report_message (a_kind: STRING; a_mesg: POP3_MESSAGE; html_output: FILE; msgs_dn: DIRECTORY_NAME; is_new: BOOLEAN)
 		local
 			dhfn, dfn, hfn, fn: FILE_NAME
 			f: PLAIN_TEXT_FILE
@@ -934,7 +944,13 @@ feature {NONE} -- Initialization
 				f.close
 			end
 			html_output.put_string ("<div class=%"message%">")
-			html_output.put_string ("<div class=%"line%">")
+			if is_new then
+				html_output.put_string ("<div class=%"line new%">")
+			else
+				html_output.put_string ("<div class=%"line%">")
+			end
+
+			html_output.put_string ("<div class=%"synopsis%">")
 			html_output.put_string ("<a href=%"messages/" + dfn  + "%">")
 
 			html_output.put_string ("<span class=%"header%">")
@@ -942,7 +958,6 @@ feature {NONE} -- Initialization
 			html_output.put_integer (a_mesg.index)
 			html_output.put_string ("</span>")
 
-			html_output.put_string ("<span class=%"content%">")
 			if attached a_mesg.header_subject as l_text_subject then
 				s := l_text_subject.string
 				s.replace_substring_all ("<", "&lt;")
@@ -950,8 +965,8 @@ feature {NONE} -- Initialization
 				html_output.put_string (" <span class=%"msubject%">" + s + "</span>")
 			end
 			html_output.put_string ("</a>")
-			html_output.put_string ("<br/>&nbsp;&nbsp;&nbsp;&nbsp; ")
-
+			html_output.put_string ("</div>%N")
+			html_output.put_string ("<div class=%"details%">")
 			if attached a_mesg.header_from as l_text_from then
 				s := l_text_from.string
 				s.replace_substring_all ("<", "&lt;")
@@ -976,15 +991,15 @@ feature {NONE} -- Initialization
 					html_output.put_string (" <span class=%"mdate%">" + l_text_date + "</span>")
 				end
 			end
-			html_output.put_string ("</span>")
 			html_output.put_string ("<span class=%"header-opt%">")
 			if attached a_mesg.uid as l_text_uid then
 				html_output.put_string (" &lt;" + l_text_uid + "&gt;")
 			end
 			html_output.put_string (" <a class=%"rawheaders%" href=%"messages/" + dhfn  + "%">(headers)</a>")
 			html_output.put_string ("</span>")
-			html_output.put_string ("</div>%N")
-			html_output.put_string ("</div>%N%N")
+			html_output.put_string ("</div>%N") -- details
+			html_output.put_string ("</div>%N") -- line
+			html_output.put_string ("</div>%N%N") -- message
 		end
 
 	accounts_html_head (a_title: detachable STRING): STRING

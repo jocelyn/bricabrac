@@ -31,6 +31,12 @@ div.message:hover {
 	background-color: #efefff;
 }
 .line { font-size: 75%; padding-top: 2px; }
+.line.new { 
+	margin-left: -10px;
+	border-left: solid 10px #009;
+	border-top: solid 1px #009;
+}
+
 .header { font-style: italic; color: #999; }
 .header-opt { font-style: italic; color: #999; }
 .msubject {font-weight: bold; color: #00a }
@@ -38,6 +44,9 @@ div.message:hover {
 .mdate {font-style: italic; color: #600; }
 .content {color: #000; }
 .jq {color: #F00; border: solid 2px #f00; }
+.details {
+	margin-left: 20px;
+}
 
 #accounts  li {
 	border-bottom: dotted 1px #99f;
@@ -50,7 +59,7 @@ div.message:hover {
 
 #accounts .new {
 	font-weight: bold;
-	font-color: #f00;
+	color: #f00;
 }
 
 #pop {
@@ -90,11 +99,17 @@ div#log {
 	background-color: #ffc;
 	border: solid 1px #00f;
 	width: 50%;
-	position: absolute;
+	position: fixed ;
 	top: 2px;
 	right: 2px;
 }
 .loading {
 	border-bottom: solid 1px #f00;
 	width: 1%;
+}
+#toolbar {
+	display: inline;
+	margin-right: 10px;
+	float: right;
+
 }

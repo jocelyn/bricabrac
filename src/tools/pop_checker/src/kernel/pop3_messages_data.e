@@ -28,6 +28,8 @@ feature -- Access
 
 	offline_messages: detachable ARRAYED_LIST [TUPLE [id: like counter; message: POP3_MESSAGE]]
 
+	new_messages: detachable ARRAYED_LIST [POP3_MESSAGE]
+
 	messages_count: INTEGER
 		do
 			if attached messages as msgs then
@@ -38,6 +40,11 @@ feature -- Access
 		end
 
 	new_messages_count: INTEGER
+		do
+			if attached new_messages as l_new then
+				Result := l_new.count
+			end
+		end
 
 	counter: NATURAL_64
 
@@ -155,6 +162,15 @@ feature -- Access
 --			Result.replace_substring_all (":", "_")
 		end
 
+	is_new_message (a_msg: POP3_MESSAGE): BOOLEAN
+		require
+			a_msg_attached: a_msg /= Void
+		do
+			if attached new_messages as l_new_msgs then
+				Result := l_new_msgs.has (a_msg)
+			end
+		end
+
 feature -- Basic operations
 
 	reset_logs
@@ -211,6 +227,18 @@ feature -- Basic operations
 			end
 		end
 
+	record_new_message (a_msg: POP3_MESSAGE)
+		require
+			a_msg_attached: a_msg /= Void
+			new_messages_attached: new_messages /= Void
+		do
+			if attached new_messages as l_new_msgs then
+				l_new_msgs.extend (a_msg)
+			else
+				check should_not_occur: False end
+			end
+		end
+
 	record_offline (a_msg: POP3_MESSAGE)
 		require
 			a_msg_attached: a_msg /= Void
@@ -249,8 +277,23 @@ feature -- Basic operations
 feature -- Element change
 
 	set_new_messages_count (n: like new_messages_count)
+			-- Clear new messages, and resize to be
+		local
+			l_new_msgs: like new_messages
 		do
-			new_messages_count := n
+			if n = 0 then
+				new_messages := Void
+			else
+				l_new_msgs := new_messages
+				if l_new_msgs = Void or else n < l_new_msgs.capacity then
+					create l_new_msgs.make (n)
+					new_messages := l_new_msgs
+				else
+					l_new_msgs.wipe_out
+					check n >= l_new_msgs.capacity end
+					l_new_msgs.resize (n)
+				end
+			end
 		end
 
 end
