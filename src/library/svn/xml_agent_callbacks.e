@@ -32,17 +32,17 @@ feature -- Access
 
 feature -- Impl
 
-	on_attribute_callback: PROCEDURE [ANY, TUPLE [STRING, STRING, STRING, STRING]]
-	on_comment_callback: PROCEDURE [ANY, TUPLE [STRING]]
-	on_content_callback: PROCEDURE [ANY, TUPLE [STRING]]
-	on_end_tag_callback: PROCEDURE [ANY, TUPLE [STRING, STRING, STRING]]
-	on_error_callback: PROCEDURE [ANY, TUPLE [STRING]]
-	on_finish_callback: PROCEDURE [ANY, TUPLE]
-	on_processing_instruction_callback: PROCEDURE [ANY, TUPLE [STRING, STRING]]
-	on_start_callback: PROCEDURE [ANY, TUPLE]
-	on_start_tag_callback: PROCEDURE [ANY, TUPLE [STRING, STRING, STRING]]
-	on_start_tag_finish_callback: PROCEDURE [ANY, TUPLE]
-	on_xml_declaration_callback: PROCEDURE [ANY, TUPLE [STRING, STRING, BOOLEAN]]
+	on_attribute_callback: detachable PROCEDURE [ANY, TUPLE [STRING, STRING, STRING, STRING]]
+	on_comment_callback: detachable PROCEDURE [ANY, TUPLE [STRING]]
+	on_content_callback: detachable PROCEDURE [ANY, TUPLE [STRING]]
+	on_end_tag_callback: detachable PROCEDURE [ANY, TUPLE [STRING, STRING, STRING]]
+	on_error_callback: detachable PROCEDURE [ANY, TUPLE [STRING]]
+	on_finish_callback: detachable PROCEDURE [ANY, TUPLE]
+	on_processing_instruction_callback: detachable PROCEDURE [ANY, TUPLE [STRING, STRING]]
+	on_start_callback: detachable PROCEDURE [ANY, TUPLE]
+	on_start_tag_callback: detachable PROCEDURE [ANY, TUPLE [STRING, STRING, STRING]]
+	on_start_tag_finish_callback: detachable PROCEDURE [ANY, TUPLE]
+	on_xml_declaration_callback: detachable PROCEDURE [ANY, TUPLE [STRING, STRING, BOOLEAN]]
 
 feature -- Setting
 

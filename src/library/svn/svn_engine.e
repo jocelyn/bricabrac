@@ -50,7 +50,47 @@ feature -- Status report
 			Result := statuses (a_path, is_verbose, is_recursive, is_remote)
 		end
 
-	logs (a_location: STRING; is_verbose: BOOLEAN; a_start, a_end: INTEGER; a_limit: INTEGER): LIST [SVN_REVISION_INFO]
+	repository_info (a_location: STRING): detachable SVN_REPOSITORY_INFO
+		local
+			s: STRING
+			cmd: STRING
+			info: SVN_REVISION_INFO
+			lst, lst2: ARRAYED_LIST [SVN_REVISION_INFO]
+		do
+			debug ("SVN_ENGINE")
+				print ("Fetch svn info from [" + a_location + "] %N")
+			end
+
+			create cmd.make_from_string (svn_executable_path)
+			cmd.append_string (" --xml info ")
+			cmd.append_string (a_location)
+
+			debug ("SVN_ENGINE")
+				print ("Command: [" + cmd + "]%N")
+			end
+			s := process_misc.output_of_command (cmd, Void)
+			debug ("SVN_ENGINE")
+				print ("-> terminated %N")
+			end
+			if s = Void then
+				debug ("SVN_ENGINE")
+					print ("-> terminated : None .%N")
+				end
+			else
+				debug ("SVN_ENGINE")
+					print ("-> terminated : count=" + s.count.out + " .%N")
+					print (s)
+				end
+--				s.replace_substring_all ("%R%N", "%N")
+
+				if svn_xml_manager = Void then
+					create svn_xml_manager
+ 				end
+				Result := svn_xml_manager.string_to_repository_info (a_location, s)
+			end
+		end
+
+	logs (a_location: STRING; is_verbose: BOOLEAN; a_start, a_end: INTEGER; a_limit: INTEGER): detachable LIST [SVN_REVISION_INFO]
 		local
 			s: STRING
 			cmd: STRING
@@ -132,16 +172,18 @@ feature -- Status report
 --				end
 			end
 		end
+
 feature {NONE} -- impl
 
-	svn_xml_manager: SVN_XML_MANAGER
+	svn_xml_manager: detachable SVN_XML_MANAGER
 
-	impl_statuses (a_prefix_path, a_path: STRING; is_verbose, is_recursive, is_remote: BOOLEAN): ARRAYED_LIST [SVN_STATUS_INFO]
+	impl_statuses (a_prefix_path, a_path: STRING; is_verbose, is_recursive, is_remote: BOOLEAN): detachable ARRAYED_LIST [SVN_STATUS_INFO]
 		local
-			s: STRING
+			s: detachable STRING
 			cmd: STRING
 			info: SVN_STATUS_INFO
 			lst, lst2: ARRAYED_LIST [SVN_STATUS_INFO]
+			l_svn_xml_manager: like svn_xml_manager
 		do
 			debug ("SVN_ENGINE")
 				print ("Fetch svn info from [" + a_path + "] (is_recursive=" + is_recursive.out + ") %N")
@@ -176,11 +218,13 @@ feature {NONE} -- impl
 					print (s)
 				end
 
-				if svn_xml_manager = Void then
-					create svn_xml_manager
+				l_svn_xml_manager := svn_xml_manager
+				if l_svn_xml_manager = Void then
+					create l_svn_xml_manager
+					svn_xml_manager := l_svn_xml_manager
  				end
 -- 				s.replace_substring_all ("%R%N", "%N")
-				Result := svn_xml_manager.string_to_status_on_pathes (a_prefix_path, a_path, s)
+				Result := l_svn_xml_manager.string_to_status_on_pathes (a_prefix_path, a_path, s)
 				if is_recursive and Result /= Void and then Result.count > 0 then
 					from
 						Result.start

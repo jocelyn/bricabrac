@@ -10,7 +10,8 @@ class
 inherit
 	SVN_CONSTANTS
 		export
-			{NONE} all
+			{NONE} all;
+			{ANY} kind_to_string
 		undefine
 			is_equal
 		end
@@ -25,7 +26,11 @@ feature
 	make (r: INTEGER)
 		do
 			revision := r
-			create {ARRAYED_LIST [TUPLE [path: STRING; kind: STRING; action: STRING]]} paths.make (5)
+			create log_message.make_empty
+			create date.make_empty
+			create author.make_empty
+--			create {ARRAYED_LIST [TUPLE [path: STRING; kind: NATURAL_8; action: STRING]]} paths.make (3)
+			create {ARRAYED_LIST [like paths.item_for_iteration]} paths.make (3)
 		end
 
 feature -- Access
@@ -36,7 +41,85 @@ feature -- Access
 
 	date: STRING
 
-	paths: LIST [TUPLE [path: STRING; kind: STRING; action: STRING]]
+	paths: LIST [TUPLE [path: STRING; kind: NATURAL_8; action: STRING]]
+
+	common_parent_path: STRING
+		local
+			p: STRING
+			r: detachable STRING
+			i, c: INTEGER
+		do
+			if attached paths as l_paths and then not l_paths.is_empty then
+				if l_paths.first.kind = kind_dir then
+					r := l_paths.first.path.string
+					format_folder_name (r)
+				else
+					r := folder_name (l_paths.first.path)
+				end
+
+				if l_paths.count > 1 then
+					from
+						l_paths.start
+						c := r.count
+					until
+						l_paths.after or r.is_empty
+					loop
+						p := l_paths.item.path
+						from
+							i := 1
+						until
+							i > c or i > p.count
+						loop
+							if r[i] /= p[i] then
+								r := folder_name (r.substring (1, i - 1))
+								c := r.count
+							end
+							i := i + 1
+						end
+						l_paths.forth
+					end
+				end
+			end
+			if r /= Void then
+				if r[r.count] = '/' then
+					Result := r.substring (1, r.count - 1)
+				else
+					Result := r
+				end
+			else
+				create Result.make_empty
+			end
+		end
+
+	folder_name (s: STRING): STRING
+		local
+			p: INTEGER
+		do
+			p := s.last_index_of ('/', s.count)
+			if p > 0 and p < s.count then
+				Result := s.substring (1, p)
+			else
+				Result := s.string
+				format_folder_name (Result)
+			end
+		ensure
+			Result /= s
+		end
+
+	format_folder_name (s: STRING)
+		require
+			s_attached: s /= Void
+		do
+			from
+			until
+				s[s.count] /= '/'
+			loop
+				s.remove_tail (1)
+			end
+			s.extend ('/')
+		ensure
+			string_with_final_separator: s[s.count] = '/'
+		end
 
 	log_message: STRING
 
@@ -71,7 +154,7 @@ feature -- Element change
 
 	add_path (a_path: STRING; a_kind: STRING; a_action: STRING)
 		do
-			paths.force ([a_path, a_kind, a_action])
+			paths.force ([a_path, string_to_kind (a_kind), a_action])
 		end
 
 note

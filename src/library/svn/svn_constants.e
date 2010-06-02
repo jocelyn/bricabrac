@@ -36,6 +36,32 @@ feature -- Id
 	status_obstructed_id: STRING = "obstructed"
 	status_external_id: STRING = "external"
 
+	kind_file: NATURAL_8 = 1
+	kind_dir: NATURAL_8 = 2
+
+	kind_to_string (a_kind: NATURAL_8): STRING
+		do
+			inspect a_kind
+			when kind_file then
+				Result := "file"
+			when kind_dir then
+				Result := "dir"
+			else
+				Result := "UnknownKind"
+			end
+		end
+
+	string_to_kind (a_kind_name: STRING): NATURAL_8
+		do
+			if a_kind_name.same_string_general ("file") then
+				Result := kind_file
+			elseif a_kind_name.same_string_general ("dir") then
+				Result := kind_dir
+			else
+				--| Result := 0
+			end
+		end
+
 	status_code_name_entries: ARRAYED_LIST [TUPLE [code: INTEGER; name: STRING]]
 		once
 			create Result.make (11)
@@ -53,7 +79,7 @@ feature -- Id
 			Result.extend ([status_error, status_error_id])
 			Result.extend ([status_none, status_none_id])
 		ensure
-			not Result.has (Void)
+--			not Result.has (Void)
 		end
 
 	status_codes: HASH_TABLE [INTEGER, STRING]
@@ -88,4 +114,12 @@ feature -- Id
 			end
 		end
 
+note
+	copyright: "Copyright (c) 2003-2010, Jocelyn Fiat"
+	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
+	source: "[
+			 Jocelyn Fiat
+			 Contact: jocelyn@eiffelsolution.com
+			 Website http://www.eiffelsolution.com/
+		]"
 end

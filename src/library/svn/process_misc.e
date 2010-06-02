@@ -11,7 +11,7 @@ feature
 
 	last_error: INTEGER
 
-	output_of_command (a_cmd, a_dir: STRING): STRING
+	output_of_command (a_cmd, a_dir: STRING): detachable STRING
 		local
 			pf: PROCESS_FACTORY
 			p: PROCESS

@@ -67,7 +67,7 @@ feature
 
 	wc_status_code, repos_status_code: INTEGER
 
-	props: HASH_TABLE [STRING, STRING]
+	props: detachable HASH_TABLE [STRING, STRING]
 
 feature -- comp
 

@@ -12,6 +12,87 @@ inherit
 
 feature -- Access
 
+	string_to_repository_info (a_location: STRING; s: STRING): SVN_REPOSITORY_INFO
+		local
+			retried: BOOLEAN
+			l_revision: STRING
+			tree: XML_CALLBACKS_TREE
+			docs: XML_DOCUMENT
+			att: detachable XML_ATTRIBUTE
+			elt: XML_ELEMENT
+			resolver: XML_NAMESPACE_RESOLVER
+			parser: XML_CUSTOM_PARSER
+		do
+			if not retried then
+				if s /= Void then
+					create parser.make
+					parser.set_carriage_return_ignored (True)
+
+					create tree.make_null
+					tree.set_source_parser (parser)
+					create resolver.set_next (tree)
+					resolver.set_forward_xmlns (True)
+					parser.set_callbacks (resolver)
+
+					parser.parse_from_string (s)
+
+					if parser.error_occurred then
+						Result := Void
+					else
+						docs := tree.document
+						if docs /= Void then
+							elt := docs.root_element
+--							create Result.make (elt.count - 1)
+							if attached {XML_ELEMENT} elt.element_by_name ("entry") as elt_i then
+								att := elt_i.attribute_by_name ("path")
+								if att /= Void then
+									create Result.make (att.value)
+									att := elt_i.attribute_by_name ("revision")
+									if att /= Void then
+										l_revision := att.value
+										if l_revision.is_integer then
+											Result.revision := l_revision.to_integer
+										end
+									end
+--										att := elt_i.attribute_by_name ("kind")
+									if attached {XML_ELEMENT} elt_i.element_by_name ("url") as l_url then
+										Result.url := joined_content (l_url)
+									end
+									if attached {XML_ELEMENT} elt_i.element_by_name ("repository") as l_repository then
+										if attached {XML_ELEMENT} l_repository.element_by_name ("root") as l_repository_root then
+											Result.repository_root := joined_content (l_repository_root)
+										end
+										if attached {XML_ELEMENT} l_repository.element_by_name ("uuid") as l_repository_uuid then
+											Result.repository_uuid := joined_content (l_repository_uuid)
+										end
+									end
+									if attached {XML_ELEMENT} elt_i.element_by_name ("commit") as l_commit then
+										att := l_commit.attribute_by_name ("revision")
+										if att /= Void then
+											l_revision := att.value
+											if l_revision.is_integer then
+												Result.last_changed_rev := l_revision.to_integer
+											end
+										end
+										if attached {XML_ELEMENT} l_commit.element_by_name ("author") as l_commit_author then
+											Result.last_changed_author := joined_content (l_commit_author)
+										end
+										if attached {XML_ELEMENT} l_commit.element_by_name ("date") as l_commit_date then
+											Result.last_changed_date := joined_content (l_commit_date)
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		rescue
+			retried := True
+			retry
+		end
+
+
 	string_to_status_on_pathes (a_prefix_path, dir: STRING; s: STRING): ARRAYED_LIST [SVN_STATUS_INFO]
 		local
 			retried: BOOLEAN
@@ -22,13 +103,13 @@ feature -- Access
 			att: detachable XML_ATTRIBUTE
 			elt: XML_ELEMENT
 			resolver: XML_NAMESPACE_RESOLVER
-			parser: XML_PARSER
+			parser: XML_SIMPLE_PARSER
 		do
 			if not retried then
 				if s /= Void then
 					create parser.make
 
-					create tree.make
+					create tree.make_null
 					tree.set_source_parser (parser)
 					create resolver.set_next (tree)
 					resolver.set_forward_xmlns (True)
@@ -107,7 +188,7 @@ feature -- Access
 			retry
 		end
 
-	string_to_logs (a_location: STRING; s: STRING): ARRAYED_LIST [SVN_REVISION_INFO]
+	string_to_logs (a_location: STRING; s: STRING): detachable ARRAYED_LIST [SVN_REVISION_INFO]
 		local
 			retried: BOOLEAN
 			l_revision: STRING
@@ -118,13 +199,14 @@ feature -- Access
 			att: detachable XML_ATTRIBUTE
 			elt: XML_ELEMENT
 			resolver: XML_NAMESPACE_RESOLVER
-			parser: XML_PARSER
+			parser: XML_CUSTOM_PARSER
 		do
 			if not retried then
 				if s /= Void then
 					create parser.make
+					parser.set_carriage_return_ignored (True)
 
-					create tree.make
+					create tree.make_null
 					tree.set_source_parser (parser)
 					create resolver.set_next (tree)
 					resolver.set_forward_xmlns (True)
