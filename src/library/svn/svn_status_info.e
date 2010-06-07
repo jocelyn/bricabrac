@@ -44,14 +44,14 @@ feature
 
 	absolute_path: FILE_NAME
 
-	prefix_path: STRING
+	prefix_path: detachable STRING
 
 	display_path: STRING
 		local
 			fn: FILE_NAME
 		do
-			if prefix_path /= Void then
-				create fn.make_from_string (prefix_path)
+			if attached prefix_path as l_prefix_path then
+				create fn.make_from_string (l_prefix_path)
 				fn.extend (path)
 				Result := fn
 			else
@@ -88,7 +88,7 @@ feature
 			wc_revision := v
 		end
 
-	set_wc_status (v: like wc_status)
+	set_wc_status (v: detachable like wc_status)
 		do
 			if v /= Void and then not v.is_empty then
 				wc_status := v
@@ -103,7 +103,7 @@ feature
 			repos_revision := v
 		end
 
-	set_repos_status (v: like repos_status)
+	set_repos_status (v: detachable like repos_status)
 		do
 			if v /= Void and then not v.is_empty then
 				repos_status := v

@@ -12,14 +12,14 @@ create
 
 feature {NONE} -- Initialization
 
-	make (a_path: STRING)
+	make (a_localisation: STRING)
 		do
-			path := a_path
+			localisation := a_localisation
 		end
 
 feature -- Access
 
-	path: STRING assign set_path
+	localisation: STRING assign set_localisation
 	url: detachable STRING assign set_url
 	repository_root: detachable STRING assign set_repository_root
 	repository_uuid: detachable STRING assign set_repository_uuid
@@ -30,9 +30,9 @@ feature -- Access
 
 feature -- Element change
 
-	set_path (v: STRING)
+	set_localisation (v: STRING)
 		do
-			path := v
+			localisation := v
 		end
 
 	set_url (v: detachable STRING)

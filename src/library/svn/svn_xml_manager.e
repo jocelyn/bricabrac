@@ -12,7 +12,7 @@ inherit
 
 feature -- Access
 
-	string_to_repository_info (a_location: STRING; s: STRING): SVN_REPOSITORY_INFO
+	string_to_repository_info (a_location: STRING; s: STRING): detachable SVN_REPOSITORY_INFO
 		local
 			retried: BOOLEAN
 			l_revision: STRING
@@ -93,15 +93,15 @@ feature -- Access
 		end
 
 
-	string_to_status_on_pathes (a_prefix_path, dir: STRING; s: STRING): ARRAYED_LIST [SVN_STATUS_INFO]
+	string_to_status_on_pathes (a_prefix_path: detachable STRING; dir: STRING; s: STRING): detachable ARRAYED_LIST [SVN_STATUS_INFO]
 		local
 			retried: BOOLEAN
-			l_path, l_status, l_revision: STRING
+			l_path, l_status, l_revision: detachable STRING
 			info: SVN_STATUS_INFO
 			tree: XML_CALLBACKS_TREE
 			docs: XML_DOCUMENT
 			att: detachable XML_ATTRIBUTE
-			elt: XML_ELEMENT
+			elt: detachable XML_ELEMENT
 			resolver: XML_NAMESPACE_RESOLVER
 			parser: XML_SIMPLE_PARSER
 		do
@@ -124,60 +124,66 @@ feature -- Access
 						if docs /= Void then
 							elt := docs.root_element
 							elt := elt.element_by_name ("target")
-							create Result.make (elt.count - 1)
-							from
-								elt.start
-							until
-								elt.after
-							loop
-								if attached {XML_ELEMENT} elt.item_for_iteration as elt_i and then elt_i.name.is_equal ("entry") then
-									l_path := elt_i.attribute_by_name ("path").value
-									if l_path /= Void and then not l_path.is_equal (once ".") then
-										create info.make (dir, l_path, a_prefix_path)
-										Result.force (info)
-
-										if attached {XML_ELEMENT} elt_i.element_by_name ("wc-status") as wc_status then
-											att := wc_status.attribute_by_name ("item")
-											if att /= Void then
-												l_status := att.value
-											else
-												l_status := Void
-											end
-											info.set_wc_status (l_status)
-
-											att := wc_status.attribute_by_name ("revision")
-											if att /= Void then
-												l_revision := att.value
-											else
-												l_revision := Void
-											end
-											if l_revision /= Void and then l_revision.is_integer then
-												info.set_wc_revision (l_revision.to_integer)
-											end
-
+							if elt /= Void then
+								create Result.make (elt.count - 1)
+								from
+									elt.start
+								until
+									elt.after
+								loop
+									if attached {XML_ELEMENT} elt.item_for_iteration as elt_i and then elt_i.name.is_equal ("entry") then
+										if attached elt_i.attribute_by_name ("path") as l_xml_att then
+											l_path := l_xml_att.value
+										else
+											l_path := Void
 										end
-										if attached {XML_ELEMENT} elt_i.element_by_name ("repos-status") as repos_status then
-											att := repos_status.attribute_by_name ("item")
-											if att /= Void then
-												l_status := att.value
-											else
-												l_status := Void
-											end
-											info.set_repos_status (l_status)
+										if l_path /= Void and then not l_path.is_equal (once ".") then
+											create info.make (dir, l_path, a_prefix_path)
+											Result.force (info)
 
-											att := repos_status.attribute_by_name ("revision")
-											if att /= Void then
-												l_revision := att.value
-											else
-												l_revision := Void
+											if attached {XML_ELEMENT} elt_i.element_by_name ("wc-status") as wc_status then
+												att := wc_status.attribute_by_name ("item")
+												if att /= Void then
+													l_status := att.value
+												else
+													l_status := Void
+												end
+												info.set_wc_status (l_status)
+
+												att := wc_status.attribute_by_name ("revision")
+												if att /= Void then
+													l_revision := att.value
+												else
+													l_revision := Void
+												end
+												if l_revision /= Void and then l_revision.is_integer then
+													info.set_wc_revision (l_revision.to_integer)
+												end
+
 											end
-											if l_revision /= Void and then l_revision.is_integer then
-												info.set_repos_revision (l_revision.to_integer)
+											if attached {XML_ELEMENT} elt_i.element_by_name ("repos-status") as repos_status then
+												att := repos_status.attribute_by_name ("item")
+												if att /= Void then
+													l_status := att.value
+												else
+													l_status := Void
+												end
+												info.set_repos_status (l_status)
+
+												att := repos_status.attribute_by_name ("revision")
+												if att /= Void then
+													l_revision := att.value
+												else
+													l_revision := Void
+												end
+												if l_revision /= Void and then l_revision.is_integer then
+													info.set_repos_revision (l_revision.to_integer)
+												end
 											end
 										end
 									end
+									elt.forth
 								end
-								elt.forth
 							end
 						end
 					end
@@ -192,7 +198,7 @@ feature -- Access
 		local
 			retried: BOOLEAN
 			l_revision: STRING
-			l_kind,l_action: STRING
+			l_kind,l_action: detachable STRING
 			info: SVN_REVISION_INFO
 			tree: XML_CALLBACKS_TREE
 			docs: XML_DOCUMENT
@@ -220,7 +226,11 @@ feature -- Access
 						docs := tree.document
 						if docs /= Void then
 							elt := docs.root_element
-							create Result.make (elt.count - 1)
+							if elt.count > 0 then
+								create Result.make (elt.count - 1)
+							else
+								create Result.make (0)
+							end
 							from
 								elt.start
 							until
@@ -254,9 +264,13 @@ feature -- Access
 														l_action := Void
 														if attached {XML_ATTRIBUTE} l_path_elt.attribute_by_name ("kind") as l_kind_att then
 															l_kind := l_kind_att.value
+														else
+															l_kind := ""
 														end
 														if attached {XML_ATTRIBUTE} l_path_elt.attribute_by_name ("action") as l_action_att then
 															l_action := l_action_att.value
+														else
+															l_action := ""
 														end
 														info.add_path (joined_content (l_path_elt), l_kind, l_action)
 													end
@@ -282,7 +296,6 @@ feature {NONE} -- Implementation
 
 	joined_content (elt: XML_ELEMENT): STRING
 		local
-			c: CURSOR
 			contents: LIST [XML_CHARACTER_DATA]
 		do
 			create Result.make_empty

@@ -38,12 +38,12 @@ feature -- Element change
 
 feature -- Status report
 
-	statuses (a_path: STRING; is_verbose, is_recursive, is_remote: BOOLEAN): LIST [SVN_STATUS_INFO]
+	statuses (a_path: STRING; is_verbose, is_recursive, is_remote: BOOLEAN): detachable LIST [SVN_STATUS_INFO]
 		do
 			Result := impl_statuses (Void, a_path, is_verbose, is_recursive, is_remote)
 		end
 
-	list_of_nodes_from (a_path: STRING; is_verbose, is_recursive, is_remote: BOOLEAN): LIST [SVN_STATUS_INFO]
+	list_of_nodes_from (a_path: STRING; is_verbose, is_recursive, is_remote: BOOLEAN): detachable LIST [SVN_STATUS_INFO]
 		obsolete
 			"use statuses"
 		do
@@ -52,10 +52,9 @@ feature -- Status report
 
 	repository_info (a_location: STRING): detachable SVN_REPOSITORY_INFO
 		local
-			s: STRING
+			s: detachable STRING
 			cmd: STRING
-			info: SVN_REVISION_INFO
-			lst, lst2: ARRAYED_LIST [SVN_REVISION_INFO]
+			l_svn_xml_manager: like svn_xml_manager
 		do
 			debug ("SVN_ENGINE")
 				print ("Fetch svn info from [" + a_location + "] %N")
@@ -83,19 +82,20 @@ feature -- Status report
 				end
 --				s.replace_substring_all ("%R%N", "%N")
 
-				if svn_xml_manager = Void then
-					create svn_xml_manager
+				l_svn_xml_manager := svn_xml_manager
+				if l_svn_xml_manager = Void then
+					create l_svn_xml_manager
+					svn_xml_manager := l_svn_xml_manager
  				end
-				Result := svn_xml_manager.string_to_repository_info (a_location, s)
+				Result := l_svn_xml_manager.string_to_repository_info (a_location, s)
 			end
 		end
 
 	logs (a_location: STRING; is_verbose: BOOLEAN; a_start, a_end: INTEGER; a_limit: INTEGER): detachable LIST [SVN_REVISION_INFO]
 		local
-			s: STRING
+			s: detachable STRING
 			cmd: STRING
-			info: SVN_REVISION_INFO
-			lst, lst2: ARRAYED_LIST [SVN_REVISION_INFO]
+			l_svn_xml_manager: like svn_xml_manager
 		do
 			debug ("SVN_ENGINE")
 				print ("Fetch svn logs from [" + a_location + "] (range [" + a_start.out + ".." + a_end.out + "] limit of " + a_limit.out + " entries) %N")
@@ -135,10 +135,12 @@ feature -- Status report
 				end
 --				s.replace_substring_all ("%R%N", "%N")
 
-				if svn_xml_manager = Void then
-					create svn_xml_manager
+				l_svn_xml_manager := svn_xml_manager
+				if l_svn_xml_manager = Void then
+					create l_svn_xml_manager
+					svn_xml_manager := l_svn_xml_manager
  				end
-				Result := svn_xml_manager.string_to_logs (a_location, s)
+				Result := l_svn_xml_manager.string_to_logs (a_location, s)
 --				if is_recursive and Result /= Void and then Result.count > 0 then
 --					from
 --						Result.start
@@ -177,12 +179,12 @@ feature {NONE} -- impl
 
 	svn_xml_manager: detachable SVN_XML_MANAGER
 
-	impl_statuses (a_prefix_path, a_path: STRING; is_verbose, is_recursive, is_remote: BOOLEAN): detachable ARRAYED_LIST [SVN_STATUS_INFO]
+	impl_statuses (a_prefix_path: detachable STRING; a_path: STRING; is_verbose, is_recursive, is_remote: BOOLEAN): detachable ARRAYED_LIST [SVN_STATUS_INFO]
 		local
 			s: detachable STRING
 			cmd: STRING
 			info: SVN_STATUS_INFO
-			lst, lst2: ARRAYED_LIST [SVN_STATUS_INFO]
+			lst, lst2: detachable ARRAYED_LIST [SVN_STATUS_INFO]
 			l_svn_xml_manager: like svn_xml_manager
 		do
 			debug ("SVN_ENGINE")
@@ -243,7 +245,7 @@ feature {NONE} -- impl
 								debug ("SVN_ENGINE")
 									print ("Explore [" + info.absolute_path + "] %N")
 								end
-								lst2 := impl_statuses (info.display_path, info.absolute_path, is_verbose, is_recursive, is_remote)
+								lst2 := impl_statuses (info.display_path, info.absolute_path.string, is_verbose, is_recursive, is_remote)
 								if lst2 /= Void and then lst2.count > 0 then
 									lst.append (lst2)
 								end
