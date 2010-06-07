@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-6-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-6-0 http://www.eiffel.com/developers/xml/configuration-1-6-0.xsd" name="repo_review" uuid="81A3D3B5-1785-4E01-B6A4-FC43DDB3E10F">
+	<target name="repo_review">
+		<file_rule>
+			<exclude>/.git$</exclude>
+			<exclude>/EIFGENs$</exclude>
+			<exclude>/.svn$</exclude>
+		</file_rule>
+		<option trace="false" profile="false" debug="false" warning="true" is_attached_by_default="true" void_safety="all" syntax="provisional">
+			<debug name="svn_engine" enabled="true"/>
+			<assertions precondition="true"/>
+		</option>
+		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
+		<library name="base_extension" location="$ISE_LIBRARY\library\base_extension\base_extension-safe.ecf"/>
+		<library name="process" location="$ISE_LIBRARY\library\process\process-safe.ecf"/>
+		<library name="svn" location="..\..\library\svn\svn-safe.ecf" readonly="false">
+			<option debug="false">
+				<debug name="svn_engine" enabled="true"/>
+			</option>
+		</library>
+		<library name="thread" location="$ISE_LIBRARY\library\thread\thread-safe.ecf"/>
+		<library name="uuid" location="$ISE_LIBRARY\library\uuid\uuid-safe.ecf"/>
+		<cluster name="ctr_core" location=".\src\core\" recursive="true"/>
+	</target>
+	<target name="repo_review_batch" extends="repo_review">
+		<root class="BATCH_REPO_REVIEW" feature="make"/>
+		<file_rule>
+			<exclude>/.git$</exclude>
+			<exclude>/EIFGENs$</exclude>
+			<exclude>/.svn$</exclude>
+		</file_rule>
+		<setting name="console_application" value="true"/>
+		<setting name="executable_name" value="ctrb"/>
+		<setting name="multithreaded" value="True"/>
+		<cluster name="batch" location=".\src\batch\" recursive="true"/>
+	</target>
+	<target name="repo_review_gui" extends="repo_review">
+		<root class="GRAPHICAL_REPO_REVIEW" feature="make_and_launch"/>
+		<setting name="console_application" value="false"/>
+		<setting name="executable_name" value="ctr"/>
+		<setting name="multithreaded" value="True"/>
+		<library name="docking" location="$ISE_LIBRARY\library\docking\docking-safe.ecf"/>
+		<library name="vision2" location="$ISE_LIBRARY\library\vision2\vision2-safe.ecf"/>
+		<cluster name="graphical" location=".\src\graphical\" recursive="true"/>
+	</target>
+</system>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-6-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-6-0 http://www.eiffel.com/developers/xml/configuration-1-6-0.xsd" name="repo_review" uuid="81A3D3B5-1785-4E01-B6A4-FC43DDB3E10F">
+	<target name="repo_review">
+		<root class="REPO_REVIEW" feature="make"/>
+		<file_rule>
+			<exclude>/EIFGENs$</exclude>
+			<exclude>/.svn$</exclude>
+			<exclude>/.git$</exclude>
+		</file_rule>
+		<option trace="false" profile="false" debug="true" warning="true" syntax="provisional">
+			<debug name="svn_engine" enabled="true"/>
+			<assertions precondition="true"/>
+		</option>
+		<setting name="console_application" value="true"/>
+		<setting name="executable_name" value="repo_review"/>
+		<setting name="multithreaded" value="True"/>
+		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
+		<library name="base_extension" location="$ISE_LIBRARY\library\base_extension\base_extension.ecf"/>
+		<library name="svn" location="..\..\library\svn\svn.ecf" readonly="false"/>
+		<library name="process" location="$ISE_LIBRARY\library\process\process.ecf"/>
+		<library name="thread" location="$ISE_LIBRARY\library\thread\thread.ecf"/>
+		<cluster name="repo_review" location=".\" recursive="true"/>
+	</target>
+</system>
