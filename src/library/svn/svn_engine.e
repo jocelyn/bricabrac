@@ -91,6 +91,54 @@ feature -- Status report
 			end
 		end
 
+	diff (a_location: STRING; a_start, a_end: INTEGER): detachable STRING
+		local
+			s: detachable STRING
+			cmd: STRING
+		do
+			debug ("SVN_ENGINE")
+				print ("Fetch svn info from [" + a_location + "] %N")
+			end
+
+			create cmd.make_from_string (svn_executable_path)
+			cmd.append_string (" diff ")
+			cmd.append_string (a_location)
+
+			if a_start > 0 then
+				cmd.append_string (" -r")
+				if a_end > a_start then
+					cmd.append_integer (a_start)
+					cmd.append_character (':')
+					cmd.append_integer (a_end)
+				else
+					cmd.append_integer (a_start - 1)
+					cmd.append_character (':')
+					cmd.append_integer (a_start)
+				end
+			end
+--			cmd.append_string (" --summarize ")
+
+			debug ("SVN_ENGINE")
+				print ("Command: [" + cmd + "]%N")
+			end
+			s := process_misc.output_of_command (cmd, Void)
+			debug ("SVN_ENGINE")
+				print ("-> terminated %N")
+			end
+			if s = Void then
+				debug ("SVN_ENGINE")
+					print ("-> terminated : None .%N")
+				end
+			else
+				debug ("SVN_ENGINE")
+					print ("-> terminated : count=" + s.count.out + " .%N")
+					print (s)
+				end
+
+				Result := s
+			end
+		end
+
 	logs (a_location: STRING; is_verbose: BOOLEAN; a_start, a_end: INTEGER; a_limit: INTEGER): detachable LIST [SVN_REVISION_INFO]
 		local
 			s: detachable STRING
@@ -141,37 +189,6 @@ feature -- Status report
 					svn_xml_manager := l_svn_xml_manager
  				end
 				Result := l_svn_xml_manager.string_to_logs (a_location, s)
---				if is_recursive and Result /= Void and then Result.count > 0 then
---					from
---						Result.start
---						create lst.make (10)
---					until
---						Result.after
---					loop
---						info := Result.item_for_iteration
---						inspect info.wc_status_code
---						when
---							status_external,
---							status_unknown,
---							status_obstructed
---						then
---							if info.path_is_directory then
---								debug ("SVN_ENGINE")
---									print ("Explore [" + info.absolute_path + "] %N")
---								end
---								lst2 := impl_statuses (info.display_path, info.absolute_path, is_verbose, is_recursive, is_remote)
---								if lst2 /= Void and then lst2.count > 0 then
---									lst.append (lst2)
---								end
---							end
---						else
---						end
---						Result.forth
---					end
---					if lst /= Void and then lst.count > 1 then
---						Result.append (lst)
---					end
---				end
 			end
 		end
 

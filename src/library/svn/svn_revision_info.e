@@ -112,16 +112,26 @@ feature -- Access
 		do
 			from
 			until
-				s[s.count] /= '/'
+				s.count = 0 or else s[s.count] /= '/'
 			loop
 				s.remove_tail (1)
 			end
 			s.extend ('/')
 		ensure
-			string_with_final_separator: s[s.count] = '/'
+			string_with_final_separator: s.count > 0 and then s[s.count] = '/'
 		end
 
 	log_message: STRING
+
+	single_line_log_message: like log_message
+		do
+			Result := log_message.string
+			Result.left_adjust
+			Result.right_adjust
+			if Result.occurrences ('%N') > 0 then
+				Result.replace_substring_all ("%N", "%%N")
+			end
+		end
 
 feature -- Status report
 
