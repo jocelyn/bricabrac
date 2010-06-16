@@ -10,25 +10,98 @@ class
 inherit
 	REPOSITORY_DATA
 		redefine
-			repository
+			make,
+			repository,
+			fetch_diff,
+			logs,
+			delete_log
 		end
 
 create
 	make
 
+feature {NONE} -- Initialization
+
+	make (a_uuid: UUID; a_repo: like repository)
+		do
+			Precursor (a_uuid, a_repo)
+		end
+
+feature {NONE} -- Factory
+
+	log_from_revision (r: SVN_REVISION_INFO): REPOSITORY_LOG
+		local
+			l_id: STRING
+		do
+			l_id := id_of (r)
+			if
+				attached logs as l_logs and then
+				l_logs.has_key (l_id) and then
+				attached l_logs.found_item as f
+			then
+				Result := f
+			else
+				create {REPOSITORY_SVN_LOG} Result.make (r, Current)
+			end
+		end
+
 feature -- Access
 
-	logs: detachable HASH_TABLE [SVN_REVISION_INFO, INTEGER]
+	logs: detachable HASH_TABLE [like log_from_revision, STRING]
 
-	get_logs (a_fetch: BOOLEAN)
+	last_known_revision: INTEGER
+
+	info: detachable SVN_REPOSITORY_INFO
+
+feature -- Access: Diff
+
+	fetch_diff (a_log: REPOSITORY_SVN_LOG)
+		require else
+			not has_pending_diff
 		local
-			l_head_rev: INTEGER
-			l_last_fetched_rev: INTEGER
-			l_repo_logs: like repository.logs
+			s: detachable STRING
+		do
+			s := repository.revision_diff (a_log.svn_revision)
+			if s /= Void then
+				s.prune_all ('%R')
+			end
+			internal_last_diff := s
+		end
+
+	get_diff (a_log: REPOSITORY_SVN_LOG)
+		local
+			d: like last_diff
+		do
+			d := last_diff
+			if d /= Void then
+				store_log_diff (a_log, d)
+			end
+		end
+
+	has_pending_diff: BOOLEAN
+		do
+			Result := internal_last_diff /= Void
+		end
+
+	last_diff: like internal_last_diff
+		do
+			Result := internal_last_diff
+			internal_last_diff := Void
+		end
+
+	internal_last_diff: detachable STRING
+
+feature -- Access
+
+	load_logs
+		local
+			l_last_known_rev: INTEGER
 			l_logs: like logs
 			d: DIRECTORY
 			r: INTEGER
+			l_id: STRING
 		do
+			load_unread_logs
 			l_logs := logs
 			if l_logs = Void then
 				create l_logs.make (100)
@@ -45,54 +118,149 @@ feature -- Access
 				loop
 					if attached d.lastentry as s and then s.is_integer then
 						r := s.to_integer
-						l_last_fetched_rev := l_last_fetched_rev.max (r)
-						if not l_logs.has (r) and attached loaded_log (s.to_integer) as e then
-							l_logs.put (e, r)
+						l_id := r.out
+						l_last_known_rev := l_last_known_rev.max (r)
+						if not l_logs.has (l_id) and attached loaded_log (l_id) as e then
+							l_logs.put (e, l_id)
 						end
 					end
 					d.readentry
 				end
 				d.close
 			end
-			if a_fetch then
-				if attached repository.info as repo_info then
-					l_head_rev := repo_info.last_changed_rev
-					if l_last_fetched_rev > 0 then
-						l_repo_logs := repository.logs (True, l_last_fetched_rev, l_head_rev, 10)
-					else
-						l_repo_logs := repository.logs (True, 0, 0, 100)
-					end
-					if l_repo_logs /= Void then
-						from
-							l_repo_logs.start
-						until
-							l_repo_logs.after
-						loop
-							if attached l_repo_logs.item as e then
-								r := e.revision
-								if l_logs.has (r) then
-									l_logs.force (e, r)
-								else
-									l_logs.put (e, r)
-								end
-								store_log (e)
-								check loaded_log (r) ~ e end
-							end
-							l_repo_logs.forth
-						end
-					end
+			last_known_revision := l_last_known_rev
+		ensure then
+			logs_attached: logs /= Void
+		end
+
+	fetch_logs
+		do
+			load_logs
+			internal_fetch_logs (repository, last_known_revision)
+			import_fetched_logs
+		end
+
+	is_asynchronious_fetching: BOOLEAN
+
+	asynchronious_fetch_logs
+		require
+			is_not_fetching: not is_asynchronious_fetching
+		local
+--			e: EXECUTION_ENVIRONMENT
+--			n: INTEGER
+			th: WORKER_THREAD
+			l_fetch_mutex: like fetch_mutex
+		do
+			load_logs
+			is_asynchronious_fetching := True
+			l_fetch_mutex := fetch_mutex
+			if l_fetch_mutex = Void then
+				create l_fetch_mutex.make
+				fetch_mutex := l_fetch_mutex
+			end
+			create th.make (agent (ia_mut: MUTEX; ia_repo: like repository; ia_last_known_rev: INTEGER_32)
+				do
+					ia_mut.lock
+					internal_fetch_logs (ia_repo, ia_last_known_rev)
+					ia_mut.unlock
+				end (l_fetch_mutex, create {like repository}.make_from_repository (repository), last_known_revision))
+			th.launch
+		end
+
+	has_fetched_data: BOOLEAN
+
+	import_fetched_logs
+		local
+			l_log: like log_from_revision
+			l_logs: like logs
+			l_fetched_logs: like fetched_logs
+			l_fetched_info: like fetched_info
+			r: INTEGER
+			l_id: STRING
+		do
+			if has_fetched_data then
+				if attached fetch_mutex as fmutex then
+					fmutex.lock
+					l_fetched_logs := fetched_logs
+					l_fetched_info := fetched_info
+					fetched_logs := Void
+					fetched_info := Void
+					has_fetched_data := False
+					fmutex.unlock
+					fetch_mutex := Void
+					is_asynchronious_fetching := False
+				else
+					l_fetched_logs := fetched_logs
+					l_fetched_info := fetched_info
+					fetched_logs := Void
+					has_fetched_data := False
 				end
 			end
+			if l_fetched_info /= Void then
+				info := l_fetched_info
+			end
+			if l_fetched_logs /= Void and then not l_fetched_logs.is_empty then
+				l_logs := logs
+				if l_logs = Void then
+					create l_logs.make (100)
+					logs := l_logs
+				end
+				from
+					l_fetched_logs.start
+				until
+					l_fetched_logs.after
+				loop
+					if attached l_fetched_logs.item as e then
+						r := e.revision
+						l_log := log_from_revision (e)
+						l_id := l_log.id
+						if l_logs.has (l_id) then
+							l_logs.force (l_log, l_id)
+						else
+							l_logs.put (l_log, l_id)
+							mark_log_unread (l_id)
+						end
+						store_log (e)
+						check loaded_log (l_id) ~ l_log end
+					end
+					l_fetched_logs.forth
+				end
+			end
+			save_unread_logs
+		ensure
+			not_has_fetched_data: has_fetched_data = False
+			fetched_logs = Void
 		end
 
 feature {NONE} -- Implementation
 
-	repository: REPOSITORY_SVN
-
-	data_folder_name: STRING
+	id_of (r: SVN_REVISION_INFO): STRING
 		do
-			Result := "svn_logs_" + uuid.out + ".db"
+			Result := r.revision.out
 		end
+
+	fetch_mutex: detachable MUTEX
+
+	fetched_logs: like repository.logs
+
+	fetched_info: like repository.info
+
+	internal_fetch_logs (a_repo: like repository; a_last_fetched_rev: INTEGER)
+		do
+			if attached a_repo.info as repo_info then
+				fetched_info := repo_info
+				if a_last_fetched_rev > 0 then
+					fetched_logs := a_repo.logs (True, a_last_fetched_rev, repo_info.last_changed_rev, 10)
+				else
+					fetched_logs := a_repo.logs (True, 0, 0, 100)
+				end
+				has_fetched_data := True --fetched_logs /= Void
+			end
+		end
+
+feature {REPOSITORY_SVN_LOG} -- Implementation
+
+	repository: REPOSITORY_SVN
 
 	last_stored_rev: INTEGER
 		local
@@ -116,76 +284,65 @@ feature {NONE} -- Implementation
 			end
 		end
 
-	loaded_log (r: INTEGER): detachable SVN_REVISION_INFO
+	loaded_log (a_id: STRING): detachable like log_from_revision
 		local
-			fn: FILE_NAME
 			f: RAW_FILE
 			l_line: STRING
-			s: STRING
+			l_message: detachable STRING
+			e: detachable SVN_REVISION_INFO
+			r: INTEGER
 		do
-			create fn.make_from_string (data_folder_name)
-			fn.set_file_name (r.out)
-			create f.make (fn)
+			create f.make (svn_log_data_filename (a_id))
 			if f.exists and then f.is_readable then
 				f.open_read
 				from
 					f.start
-					create Result.make (r)
+					check id_is_integer: a_id.is_integer end
+					r := a_id.to_integer
+					create e.make (r)
 				until
-					f.exhausted or Result = Void
+					f.exhausted or e = Void
 				loop
 					f.read_line
 					l_line := f.last_string
-					if l_line.starts_with ("revision=") then
+					if l_message /= Void then
+						l_message.extend ('%N')
+						l_message.append_string (l_line)
+					elseif l_line.starts_with ("revision=") then
 						l_line.remove_head (9)
 						if l_line.is_integer and then l_line.to_integer /= r then
-							Result := Void
+							e := Void
 						end
 					elseif l_line.starts_with ("date=") then
 						l_line.remove_head (5)
-						Result.set_date (l_line.string)
+						e.set_date (l_line.string)
 					elseif l_line.starts_with ("author=") then
 						l_line.remove_head (7)
-						Result.set_author (l_line.string)
+						e.set_author (l_line.string)
 					elseif l_line.starts_with ("parent=") then
 --						l_line.remove_head (7)
 					elseif l_line.starts_with ("path[]=") then
 						l_line.remove_head (7)
-						Result.add_path (l_line.string, "", "")
+						e.add_path (l_line.string, "", "")
 					elseif l_line.starts_with ("message=") then
 						l_line.remove_head (8)
-						Result.set_log_message (l_line.string)
+						l_message := l_line.string
+						e.set_log_message (l_message)
 					end
 				end
 				f.close
+				if e /= Void then
+					Result := log_from_revision (e)
+				end
 			end
 		end
 
 	store_log (r: SVN_REVISION_INFO)
 		local
-			fn: FILE_NAME
-			d: DIRECTORY
 			f: RAW_FILE
 		do
-			create d.make (data_folder_name)
-			if not d.exists then
-				if d.name.has (operating_environment.directory_separator) then
-					d.recursive_create_dir
-				else
-					d.create_dir
-				end
-				create fn.make_from_string (d.name)
-				fn.set_file_name ("info.txt")
-				create f.make (fn)
-				if not f.exists then
-					f.create_read_write
-					f.put_string ("location=" + repository.location + "%N")
-					f.close
-				end
-			end
-			create fn.make_from_string (d.name)
-			fn.set_file_name (r.revision.out)
-			create f.make (fn)
+			ensure_data_folder_exists
+			create f.make (svn_log_data_filename (id_of (r)))
 			if not f.exists then
 				f.create_read_write
 				f.put_string ("revision=" + r.revision.out + "%N")
@@ -204,10 +361,52 @@ feature {NONE} -- Implementation
 				end
 				f.put_string ("message=" + r.log_message + "%N")
 				f.close
-				print ("Log for rev#" + r.revision.out + " stored%N")
+				debug ("scm")
+					print ("Log for rev#" + r.revision.out + " stored%N")
+				end
 			else
-				print ("Log for rev#" + r.revision.out + " already fetched%N")
+				debug ("scm")
+					print ("Log for rev#" + r.revision.out + " already fetched%N")
+				end
 			end
 		end
+
+feature -- Persistence
+
+	delete_log (a_log: REPOSITORY_LOG)
+		local
+			f: RAW_FILE
+			l_id: STRING
+		do
+			Precursor (a_log)
+			l_id := a_log.id
+			if attached logs as l_logs then
+				if l_logs.has_key (l_id) then
+					l_logs.remove (l_id)
+				end
+			end
+			create f.make (svn_log_data_filename (l_id))
+			if f.exists then
+				f.delete
+			end
+		end
+
+
+feature {NONE} -- Implementation
+
+	svn_log_data_filename (r: STRING): STRING
+		local
+			fn: FILE_NAME
+		do
+			create fn.make_from_string (data_folder_name)
+			fn.set_file_name (r)
+			Result := fn.string
+		end
+
+	log_data_filename (a_log: REPOSITORY_LOG): STRING
+		do
+			Result := svn_log_data_filename (a_log.id)
+		end
+
 
 end

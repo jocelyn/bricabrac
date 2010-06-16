@@ -39,8 +39,15 @@
 		<setting name="console_application" value="false"/>
 		<setting name="executable_name" value="ctr"/>
 		<setting name="multithreaded" value="True"/>
-		<library name="docking" location="$ISE_LIBRARY\library\docking\docking-safe.ecf"/>
+		<library name="docking" location="$ISE_LIBRARY\library\docking\docking-safe.ecf" readonly="false">
+			<option>
+				<assertions precondition="true" postcondition="true" check="true" supplier_precondition="true"/>
+			</option>
+		</library>
+		<library name="lib_vision2_extension" location="..\..\library\vision2_extension\vision_extension-safe.ecf" readonly="false"/>
 		<library name="vision2" location="$ISE_LIBRARY\library\vision2\vision2-safe.ecf"/>
+		<library name="vision2_extension" location="$ISE_LIBRARY\library\vision2_extension\vision2_extension-safe.ecf"/>
+		<cluster name="fmwk_vision2" location="$EIFFEL_SRC\framework\vision2\contrib_grid_items\" recursive="true"/>
 		<cluster name="graphical" location=".\src\graphical\" recursive="true"/>
 	</target>
 </system>

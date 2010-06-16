@@ -278,7 +278,7 @@ feature {EV_GRID_DRAWER_I} -- Implementation
 						from
 							l_text := l_interface.text
 							l_font_dft := drawable.font
-							l_color_dft := drawable.foreground_color
+							l_color_dft := l_parent_i.foreground_color
 							l_formats.start
 							l_format := l_formats.item
 							l_offset := l_format.offset

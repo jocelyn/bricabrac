@@ -27,6 +27,13 @@ inherit
 			default_create, copy
 		end
 
+	CTR_SHARED_RESOURCES
+		export
+			{NONE} all
+		undefine
+			default_create, copy
+		end
+
 create
 	default_create
 
@@ -41,17 +48,16 @@ feature {NONE} -- Initialization
 
 	create_interface_objects
 		do
+			Precursor
 			create catalog_grid
-			create logs_grid
-			create info_grid
-
-			create catalog_grid_content.make_with_widget (catalog_grid, "Catalog")
-			create logs_grid_content.make_with_widget (logs_grid, "Logs")
-			create info_content.make_with_widget (info_grid, "Logs")
+			create catalog_content.make_with_widget (catalog_grid, "Catalog")
 
 			create standard_status_bar
 			create standard_status_label
 			create main_container
+
+			create logs_tool.make ("Logs")
+			create info_tool.make ("Info")
 		end
 
 	initialize
@@ -60,12 +66,13 @@ feature {NONE} -- Initialization
 			dm: like docking_manager
 		do
 			Precursor {EV_TITLED_WINDOW}
+			logs_tool.set_ctr_window (Current)
+			info_tool.set_ctr_window (Current)
 
 				-- Create and add the status bar.
 			build_standard_status_bar
 			lower_bar.extend (standard_status_bar)
 
---			create main_container
 			extend (main_container)
 
 			dm := docking_manager
@@ -73,8 +80,8 @@ feature {NONE} -- Initialization
 				dm := new_docking_manager
 				docking_manager := dm
 			end
-			dm.close_editor_place_holder
 			build_tools
+			restore_docking_layout
 
 				-- Execute `request_close_window' when the user clicks
 				-- on the cross in the title bar.
@@ -101,40 +108,413 @@ feature {NONE} -- Initialization
 feature {NONE} -- Events
 
 	on_first_shown
+		do
+			load_catalog_from_ini
+			if False then
+				save_catalog_as_ini
+			end
+			update_catalog
+--			check_all_repositories
+		end
+
+	on_quit
+		local
+			r: INTEGER
+			g: like catalog_grid
+		do
+			if attached catalog as cat then
+				from
+					g := catalog_grid
+					r := 1
+				until
+					r > g.row_count
+				loop
+					if attached {REPOSITORY_DATA} g.row (r).data as rdata then
+						rdata.save_unread_logs
+					end
+					r := r + 1
+				end
+			end
+			save_docking_layout
+		end
+
+feature -- Layout
+
+	save_docking_layout
+		local
+			b: BOOLEAN
+		do
+			if attached docking_manager as dm then
+				b := dm.save_data (docking_layout_filename)
+--				b := dm.save_editors_data (docking_layout_editors_filename)
+--				b := dm.save_tools_data (docking_layout_tools_filename)
+			end
+		end
+
+	docking_layout_filename: STRING
+		once
+			Result := "data" + operating_environment.directory_separator.out + "layout.db"
+		end
+
+	docking_layout_tools_filename: STRING
+		once
+			Result := "data" + operating_environment.directory_separator.out + "layout-tools.db"
+		end
+
+	docking_layout_editors_filename: STRING
+		once
+			Result := "data" + operating_environment.directory_separator.out + "layout-editors.db"
+		end
+
+	restore_docking_layout
+		local
+			b, layout_set: BOOLEAN
+			retried: BOOLEAN
+		do
+			if not retried then
+				if attached docking_manager as dm then
+					b := True
+					layout_set := False
+					if dm.is_config_data_valid (docking_layout_filename) then
+						b := dm.open_config (docking_layout_filename)
+						layout_set := True
+					end
+					if dm.is_config_data_valid (docking_layout_editors_filename) then
+						dm.open_editors_config (docking_layout_editors_filename)
+						layout_set := True
+					end
+					if dm.is_config_data_valid (docking_layout_tools_filename) then
+						b := dm.open_tools_config (docking_layout_tools_filename)
+						layout_set := True
+					end
+				end
+				if not layout_set or not b then
+					apply_default_layout
+				end
+			else
+				apply_default_layout
+			end
+		rescue
+			retried := True
+			retry
+		end
+
+	apply_default_layout
+		do
+			if attached docking_manager as dm then
+				catalog_content.set_top ({SD_ENUMERATION}.top)
+				logs_tool.sd_content.set_top ({SD_ENUMERATION}.bottom)
+				info_tool.sd_content.set_relative (catalog_content, {SD_ENUMERATION}.right)
+				if not catalog_content.is_visible then
+					catalog_content.show
+				end
+				if not logs_tool.sd_content.is_visible then
+					logs_tool.sd_content.show
+				end
+				if not info_tool.sd_content.is_visible then
+					info_tool.sd_content.show
+				end
+				dm.close_editor_place_holder
+			end
+
+			show_actions.extend_kamikaze (agent (ac0,ac1,ac2: SD_CONTENT)
+					do
+						ac0.set_split_proportion ({REAL_32} 0.3)
+						ac1.set_split_proportion ({REAL_32} 0.3)
+						ac2.set_split_proportion ({REAL_32} 0.3)
+					end (catalog_content, logs_tool.sd_content, info_tool.sd_content)
+				)
+		ensure
+			catalog_visible: catalog_content.is_visible
+			logs_visible: logs_tool.sd_content.is_visible
+			info_visible: info_tool.sd_content.is_visible
+		end
+
+feature -- Storage
+
+	load_catalog_from_ini
 		local
 			cat: like catalog
---			d: REPOSITORY_DATA
 			rf: RAW_FILE
-			svn_repo: REPOSITORY_SVN
+			svn_repo: detachable REPOSITORY_SVN
+			n: detachable STRING
+			p: INTEGER
+			s: STRING
 		do
-			create rf.make ("catalog.db")
+			create rf.make ("catalog.ini")
 			if rf.exists then
 				rf.open_read
-				cat ?= rf.retrieved
+				from
+					create cat.make
+					rf.start
+				until
+					rf.exhausted
+				loop
+					rf.read_line
+					s := rf.last_string
+					s.left_adjust
+					if s.count > 0 then
+						if s.item (1) = '#' then
+							--| skip
+						elseif s.item (1) = '[' then
+							if svn_repo /= Void and then attached svn_repo.location as loc then
+								if n /= Void then
+									cat.add_repository (n, svn_repo)
+								else
+									cat.add_repository (loc, svn_repo)
+								end
+							end
+							s.right_adjust
+							n := s.substring (2, s.last_index_of (']', s.count) - 1)
+							n.left_adjust
+							n.right_adjust
+							create svn_repo.make
+						elseif svn_repo /= Void then
+							p := s.index_of ('=', 1)
+							if s.substring (1, p -1).same_string ("uuid") then
+								s.right_adjust
+								svn_repo.set_uuid (create {UUID}.make_from_string (s.substring (p + 1, s.count)))
+							elseif s.substring (1, p -1).same_string ("location") then
+								s.right_adjust
+								svn_repo.set_location (s.substring (p + 1, s.count))
+							elseif s.substring (1, p -1).same_string ("username") then
+								s.right_adjust
+								svn_repo.set_username (s.substring (p + 1, s.count))
+							elseif s.substring (1, p -1).same_string ("password") then
+								s.right_adjust
+								svn_repo.set_password (s.substring (p + 1, s.count))
+							elseif s.substring (1, p -1).same_string ("review") then
+								s.right_adjust
+								svn_repo.set_review_enabled (s.substring (p + 1, s.count).is_case_insensitive_equal ("on"))
+							else
+								print ("???: " + s + "%N")
+							end
+						else
+							print ("???: " + s + "%N")
+						end
+					end
+				end
+				if svn_repo /= Void and then attached svn_repo.location as loc then
+					if n /= Void then
+						cat.add_repository (n, svn_repo)
+					else
+						cat.add_repository (loc, svn_repo)
+					end
+				end
 				rf.close
 			end
-			if cat = Void or else cat.repositories.is_empty then
-				create cat.make
-				create svn_repo.make_with_location ("https://svn.eiffel.com/eiffelstudio/trunk")
-				cat.add_repository ("EiffelStudio/trunk", svn_repo)
+--			if cat = Void or else cat.repositories.is_empty then
+--				create cat.make
+--				create svn_repo.make_with_location ("https://svn.eiffel.com/eiffelstudio/trunk")
+--				cat.add_repository ("EiffelStudio/trunk", svn_repo)
 
-				create svn_repo.make_with_location ("https://svn.eiffel.com/eiffelstudio/branches/Eiffel_66")
-				cat.add_repository ("EiffelStudio/66", svn_repo)
-			end
-			catalog := cat
-
---			across cat.repositories as c loop
---				if attached {REPOSITORY_SVN} c.item as rsvn then
---					create {REPOSITORY_SVN_DATA} d.make (rsvn.uuid, rsvn)
---					d.get_logs
---				end
+--				create svn_repo.make_with_location ("https://svn.eiffel.com/eiffelstudio/branches/Eiffel_66")
+--				cat.add_repository ("EiffelStudio/66", svn_repo)
 --			end
 
-			rf.create_read_write
-			rf.independent_store (cat)
-			rf.close
+			catalog := cat
+		end
 
-			update_catalog
+	save_catalog_as_ini
+		local
+			rf: RAW_FILE
+			n: STRING
+		do
+			if attached catalog as cat then
+				create rf.make ("catalog.ini")
+				if not rf.exists or else rf.is_writable then
+					rf.create_read_write
+					across
+						cat.repositories as c
+					loop
+						n := c.key.string
+						n.replace_substring_all ("]", " ")
+						rf.put_string ("[" + n + "]%N")
+						rf.put_string ("uuid=" + c.item.uuid.out + "%N")
+						rf.put_string ("location=" + c.item.location + "%N")
+						if attached c.item.username as l_username then
+							rf.put_string ("username=" + l_username + "%N")
+						end
+						if attached c.item.password as l_password then
+							rf.put_string ("password=" + l_password + "%N")
+						end
+						if c.item.review_enabled then
+							rf.put_string ("review=on%N")
+						end
+					end
+					rf.close
+				end
+			end
+		end
+
+feature -- Check/Update/Refresh
+
+	check_selected_repositories
+		local
+			g: like catalog_grid
+			l_rows: LIST [EV_GRID_ROW]
+		do
+			g := catalog_grid
+			l_rows := g.selected_rows
+			if l_rows.count > 0 then
+				across
+					l_rows as c
+				loop
+					if attached {REPOSITORY_DATA} c.item.data as d then
+						check_repository (d)
+					end
+				end
+			else
+				check_all_repositories
+			end
+		end
+
+	check_all_repositories
+		local
+			g: like catalog_grid
+			r: INTEGER
+		do
+			g := catalog_grid
+			from
+				r := 1
+			until
+				r > g.row_count
+			loop
+				if attached {REPOSITORY_DATA} g.row (r).data as d then
+					check_repository (d)
+				end
+				r := r + 1
+			end
+		end
+
+	check_repository (a_repo: REPOSITORY_DATA)
+		do
+			if attached {REPOSITORY_SVN_DATA} a_repo as rsvndata then
+				if not rsvndata.is_asynchronious_fetching then
+					ev_application.do_once_on_idle (agent add_asynchronious_svn_task (rsvndata))
+				end
+			else
+				ev_application.do_once_on_idle (agent a_repo.fetch_logs)
+			end
+		end
+
+feature {NONE} -- Asynchronious operation
+
+	asynchronious_svn_tasks: detachable ARRAYED_LIST [REPOSITORY_SVN_DATA]
+
+	asynchronious_svn_tasks_scheduler_action: detachable PROCEDURE [ANY, TUPLE]
+
+	check_asynchronious_svn_tasks
+		do
+			debug
+				if attached standard_status_label.text as s then
+					if s.same_string ("_") then
+						standard_status_label.set_text (" ")
+					else
+						standard_status_label.set_text ("_")
+					end
+				end
+			end
+			if
+				attached asynchronious_svn_tasks as l_tasks
+			then
+				check has_task: not l_tasks.is_empty end
+				from
+					l_tasks.start
+				until
+					l_tasks.after
+				loop
+					if attached l_tasks.item as rsvndata and then rsvndata.has_fetched_data then
+						l_tasks.remove
+						if l_tasks.is_empty then
+							if attached asynchronious_svn_tasks_scheduler as l_scheduler then
+								l_scheduler.destroy
+								asynchronious_svn_tasks_scheduler := Void
+							else
+								check scheduler_exists: False end
+							end
+						end
+						standard_status_label.set_text ("Get logs for " + rsvndata.repository_location)
+						rsvndata.import_fetched_logs
+						if rsvndata = logs_tool.current_repository then
+							logs_tool.update
+							info_tool.update_current_repository (rsvndata)
+						end
+						if attached catalog_repository_row (rsvndata) as l_row then
+							update_catalog_row (l_row)
+							l_row.set_background_color (bgcolor_checked)
+						end
+						standard_status_label.set_text ("Updated: " + rsvndata.repository_location)
+					else
+						l_tasks.forth
+					end
+				end
+			end
+		end
+
+	asynchronious_svn_tasks_scheduler: detachable EV_TIMEOUT
+
+	add_asynchronious_svn_task (a_rsvndata: REPOSITORY_SVN_DATA)
+		local
+			l_asynchronious_svn_tasks: like asynchronious_svn_tasks
+			l_asynchronious_svn_tasks_scheduler: like asynchronious_svn_tasks_scheduler
+			l_asynchronious_svn_tasks_scheduler_action: like asynchronious_svn_tasks_scheduler_action
+		do
+				--| Execute task
+			a_rsvndata.asynchronious_fetch_logs
+			standard_status_label.set_text ("Check: " + a_rsvndata.repository_location)
+
+			if attached catalog_repository_row (a_rsvndata) as l_row then
+				l_row.set_background_color (bgcolor_checking)
+			end
+
+				--| Handle scheduler
+			l_asynchronious_svn_tasks := asynchronious_svn_tasks
+			if l_asynchronious_svn_tasks = Void then
+				create l_asynchronious_svn_tasks.make (10)
+				asynchronious_svn_tasks := l_asynchronious_svn_tasks
+			end
+			l_asynchronious_svn_tasks.extend (a_rsvndata)
+
+			l_asynchronious_svn_tasks_scheduler_action := asynchronious_svn_tasks_scheduler_action
+			if l_asynchronious_svn_tasks_scheduler_action = Void then
+				l_asynchronious_svn_tasks_scheduler_action := agent check_asynchronious_svn_tasks
+				asynchronious_svn_tasks_scheduler_action := l_asynchronious_svn_tasks_scheduler_action
+			end
+			l_asynchronious_svn_tasks_scheduler := asynchronious_svn_tasks_scheduler
+			if l_asynchronious_svn_tasks_scheduler = Void then
+				create l_asynchronious_svn_tasks_scheduler
+				asynchronious_svn_tasks_scheduler := l_asynchronious_svn_tasks_scheduler
+				l_asynchronious_svn_tasks_scheduler.actions.extend (l_asynchronious_svn_tasks_scheduler_action)
+				l_asynchronious_svn_tasks_scheduler.set_interval (1_000)
+			end
+
+		end
+
+feature {CTR_TOOL} -- Catalog
+
+	catalog_repository_row (a_repo: detachable REPOSITORY_DATA): detachable EV_GRID_ROW
+		local
+			g: like catalog_grid
+			r,l_count: INTEGER
+		do
+			if a_repo /= Void then
+				g := catalog_grid
+				l_count := g.row_count
+				if l_count > 0 then
+					from
+						r := 1
+					until
+						r > l_count or Result /= Void
+					loop
+						Result := g.row (r)
+						if Result.data /= a_repo then
+							Result := Void
+							r := r + 1
+						end
+					end
+				end
+			end
 		end
 
 	update_catalog
@@ -142,6 +522,7 @@ feature {NONE} -- Events
 			g: like catalog_grid
 			cat: like catalog
 			glab: EV_GRID_LABEL_ITEM
+			tt: STRING
 		do
 			g := catalog_grid
 			g.wipe_out
@@ -153,67 +534,228 @@ feature {NONE} -- Events
 				loop
 					g.insert_new_row (g.row_count + 1)
 					create glab.make_with_text (c.key)
-					g.set_item (1, g.row_count, glab)
+					glab.set_data (c.key.string)
+					g.set_item (cst_repo_name_column, g.row_count, glab)
 					if attached {REPOSITORY_SVN} c.item as rsvn then
+						tt := "location: " + rsvn.location
+						debug ("scm")
+							tt.append_string ("%Nstorage: " + rsvn.uuid.out + "%N")
+						end
+						if attached rsvn.username as l_username then
+							tt.append_string ("%Nusername: " + l_username.out + "%N")
+						end
+						if rsvn.review_enabled then
+							tt.append_string ("%NReview enabled%N")
+						end
+						glab.set_tooltip (tt)
+
 						create glab.make_with_text (rsvn.location)
-						g.set_item (2, g.row_count, glab)
+						g.set_item (cst_repo_uuid_column, g.row_count, glab)
 						g.row (g.row_count).set_data (create {REPOSITORY_SVN_DATA}.make (rsvn.uuid, rsvn))
 					end
 				end
-				g.column (1).resize_to_content
-				g.column (2).resize_to_content
+			end
+			if logs_tool.current_repository = Void and g.row_count > 0 then
+				g.row (1).enable_select
+			end
+			update_catalog_layout
+		end
+
+	update_catalog_layout
+		local
+			g: like catalog_grid
+		do
+			g := catalog_grid
+			if attached g.column (cst_repo_name_column) as col then
+				col.set_width (col.required_width_of_item_span (1, g.row_count) + 4)
+			end
+			if attached g.column (cst_repo_uuid_column) as col then
+				col.set_width (col.required_width_of_item_span (1, g.row_count) + 4)
 			end
 		end
 
-	log_sorter: QUICK_SORTER [SVN_REVISION_INFO]
-		once
-			create Result.make (create {COMPARABLE_COMPARATOR [SVN_REVISION_INFO]})
+	update_catalog_row_by_data (a_rdata: REPOSITORY_DATA)
+		do
+			if attached catalog_repository_row (a_rdata) as l_row then
+				update_catalog_row (l_row)
+			end
 		end
 
-	update_logs
+	update_catalog_row (a_row: EV_GRID_ROW)
 		local
-			g: like logs_grid
-			l_row: EV_GRID_ROW
-			l_sorted_logs: ARRAYED_LIST [SVN_REVISION_INFO]
-			l_sorter: like log_sorter
+			n: INTEGER
 		do
-			g := logs_grid
-			g.wipe_out
-			if attached current_data as rdata then
-				rdata.get_logs (False)
-				if attached {REPOSITORY_SVN_DATA} rdata as rsvndata then
-					if attached rsvndata.logs as l_logs then
-						g.set_column_count_to (4)
-						create l_sorted_logs.make (l_logs.count)
-						across
-							l_logs as c
-						loop
-							l_sorted_logs.force (c.item)
-						end
-						l_sorter := log_sorter
-						l_sorter.reverse_sort (l_sorted_logs)
-						across
-							l_sorted_logs as c
-						loop
-							if attached c.item as l_log then
-								g.insert_new_row (g.row_count + 1)
-								l_row := g.row (g.row_count)
-								l_row.set_item (cst_revision_column, create {EV_GRID_LABEL_ITEM}.make_with_text (l_log.revision.out))
-								l_row.set_item (cst_log_column, create {EV_GRID_LABEL_ITEM}.make_with_text (l_log.log_message))
-								l_row.set_item (cst_author_column, create {EV_GRID_LABEL_ITEM}.make_with_text (l_log.author))
-								l_row.set_item (cst_date_column, create {EV_GRID_LABEL_ITEM}.make_with_text (l_log.date))
+			if attached {REPOSITORY_DATA} a_row.data as rdata then
+				if a_row.count > cst_repo_name_column then
+					if attached {EV_GRID_LABEL_ITEM} a_row.item (cst_repo_name_column) as glab then
+						if attached {STRING_GENERAL} glab.data as l_name then
+							n := rdata.unread_log_count
+							if n > 0 then
+								glab.set_text (l_name.to_string_8 + " (" + n.out + ")")
+								mark_repository_unread (a_row)
+							else
+								glab.set_text (l_name)
+								mark_repository_read (a_row)
 							end
+							update_catalog_layout
 						end
-						g.column (cst_revision_column).resize_to_content
-						g.column (cst_author_column).resize_to_content
 					end
 				end
 			end
+		end
+
+	on_catalog_row_unselected (r: EV_GRID_ROW)
+		do
+		end
+
+	on_catalog_row_selected	(r: EV_GRID_ROW)
+		local
+			l_repo: detachable REPOSITORY_DATA
+		do
+			if catalog_grid.selected_rows.count <= 1 then
+				if attached {REPOSITORY_SVN_DATA} r.data as rsvndata then
+					l_repo := logs_tool.current_repository
+					if l_repo /= rsvndata then
+						logs_tool.reset
+						if attached catalog_repository_row (l_repo) as l_row then
+							mark_repository_unselected (l_row)
+						end
+						rsvndata.load_logs
+						logs_tool.update_current_repository (rsvndata)
+						info_tool.update_current_repository (rsvndata)
+						mark_repository_selected (r)
+						check catalog_repository_row (rsvndata) = r end
+						if not rsvndata.is_asynchronious_fetching then
+							unset_background_color (r)
+						end
+					end
+				end
+			end
+		end
+
+feature {CTR_TOOL} -- Diff
+
+	show_log_diff (a_log: REPOSITORY_LOG)
+		require
+			info_tool.current_log = a_log
+		local
+			rdata: REPOSITORY_DATA
+		do
+			rdata := a_log.parent
+			if not a_log.has_diff then
+				rdata.fetch_diff (a_log)
+				rdata.get_diff (a_log)
+			end
+			if a_log.has_diff then
+				info_tool.update_current_log (a_log)
+				popup_diff (a_log)
+			end
+		end
+
+	popup_diff (a_log: REPOSITORY_LOG)
+		local
+			dlg: EV_TITLED_WINDOW
+			but: EV_BUTTON
+			m: EV_VERTICAL_BOX
+			t: EV_TEXT
+		do
+			create dlg
+			create m
+			create t
+			create but.make_with_text_and_action ("Close", agent dlg.destroy)
+			dlg.extend (m)
+			m.extend (t)
+			m.extend (but)
+			m.disable_item_expand (but)
+			t.set_text (a_log.diff)
+			dlg.close_request_actions.extend (agent dlg.destroy)
+			dlg.set_position (x_position, y_position)
+			dlg.set_size (width, height)
+			dlg.enable_border
+			dlg.enable_user_resize
+			dlg.show_relative_to_window (Current)
 		end
 
 feature -- Access
 
 	catalog: detachable REPOSITORY_CATALOG
+
+feature {NONE} -- Implementation, Close event
+
+	request_close_window
+			-- The user wants to close the window
+		local
+			question_dialog: EV_CONFIRMATION_DIALOG
+		do
+			create question_dialog.make_with_text (Label_confirm_close_window)
+			question_dialog.show_modal_to_window (Current)
+
+			if attached question_dialog.selected_button as b and then b.is_equal ((create {EV_DIALOG_CONSTANTS}).ev_ok) then
+					-- Destroy the window
+				on_quit
+				destroy;
+
+					-- End the application
+					--| TODO: Remove this line if you don't want the application
+					--|       to end when the first window is closed..
+				if attached (create {EV_ENVIRONMENT}).application as app then
+					app.destroy
+				end
+			end
+		end
+
+feature {NONE} -- Implementation
+
+	main_container: EV_VERTICAL_BOX
+			-- Main container (contains all widgets displayed in this window)
+
+	build_tools
+			--
+		local
+			cat_c: SD_CONTENT
+			g: EV_GRID
+			dm: like docking_manager
+			mtb: SD_TOOL_BAR
+			tbbut: SD_TOOL_BAR_BUTTON
+		do
+			dm := docking_manager
+			if dm = Void then
+				dm := new_docking_manager
+			end
+
+				--| Repositories
+			g := catalog_grid
+			cat_c := catalog_content
+			create mtb.make
+			create tbbut.make
+			tbbut.set_pixmap (icons.new_check_small_toolbar_button_icon)
+--			tbbut.set_text ("Check")
+			tbbut.select_actions.extend (agent check_selected_repositories)
+			mtb.extend (tbbut)
+			mtb.compute_minimum_size
+			cat_c.set_mini_toolbar (mtb)
+--			cat_c.update_mini_tool_bar_size
+--			g.enable_tree
+			g.enable_multiple_row_selection
+			g.set_column_count_to (1)
+			cat_c.set_short_title ("Catalog ...")
+			cat_c.set_long_title ("Repositories")
+			dm.contents.extend (cat_c)
+			catalog_grid := g
+			catalog_content := cat_c
+			g.hide_header
+			g.row_select_actions.extend (agent on_catalog_row_selected)
+			g.row_deselect_actions.extend (agent on_catalog_row_unselected)
+
+				--| Logs
+			dm.contents.extend (logs_tool.sd_content)
+
+				--| Info
+			dm.contents.extend (info_tool.sd_content)
+		end
+
+	catalog_content: SD_CONTENT
+	catalog_grid: EV_GRID
 
 feature {NONE} -- StatusBar Implementation
 
@@ -235,7 +777,7 @@ feature {NONE} -- StatusBar Implementation
 
 				-- Populate the status bar.
 			create standard_status_label
-			standard_status_label.set_text ("Add your status text here...")
+			standard_status_label.set_text ("...")
 			standard_status_label.align_text_left
 			standard_status_bar.extend (standard_status_label)
 		ensure
@@ -244,123 +786,18 @@ feature {NONE} -- StatusBar Implementation
 				standard_status_label /= Void
 		end
 
-feature {NONE} -- Implementation, Close event
 
-	request_close_window
-			-- The user wants to close the window
-		local
-			question_dialog: EV_CONFIRMATION_DIALOG
-		do
-			create question_dialog.make_with_text (Label_confirm_close_window)
-			question_dialog.show_modal_to_window (Current)
+feature {CTR_TOOL} -- Tools
 
-			if attached question_dialog.selected_button as b and then b.is_equal ((create {EV_DIALOG_CONSTANTS}).ev_ok) then
-					-- Destroy the window
-				destroy;
-
-					-- End the application
-					--| TODO: Remove this line if you don't want the application
-					--|       to end when the first window is closed..
-				if attached (create {EV_ENVIRONMENT}).application as app then
-					app.destroy
-				end
-			end
-		end
+	logs_tool: CTR_LOGS_TOOL
+	info_tool: CTR_INFO_TOOL
 
 feature {NONE} -- Implementation
 
-	main_container: EV_VERTICAL_BOX
-			-- Main container (contains all widgets displayed in this window)
-
-	build_tools
-			--
-		local
-			cat_c, logs_c, info_c: SD_CONTENT
-			g: EV_GRID
-			dm: like docking_manager
+	unset_background_color (a_row: EV_GRID_ROW)
 		do
-			dm := docking_manager
-			if dm = Void then
-				dm := new_docking_manager
-			end
-			g := catalog_grid
-			cat_c := catalog_grid_content
---			create g
---			create cat_c.make_with_widget (g, "Catalog...")
---			g.enable_tree
-			g.enable_multiple_row_selection
-			g.set_column_count_to (1)
-			cat_c.set_short_title ("Catalog ...")
-			cat_c.set_long_title ("Repository Catalog ...")
-			dm.contents.extend (cat_c)
-			cat_c.set_top ({SD_ENUMERATION}.top)
-			catalog_grid := g
-			catalog_grid_content := cat_c
-			g.hide_header
-			g.row_select_actions.extend (agent on_catalog_row_selected)
-
-			g := logs_grid
-			logs_c := logs_grid_content
---			create g
---			create logs_c.make_with_widget (g, "Logs...")
-			g.enable_single_row_selection
-			g.set_column_count_to (4)
-			g.column (cst_revision_column).set_title ("rev")
-			g.column (cst_author_column).set_title ("author")
-			g.column (cst_log_column).set_title ("message")
-			g.column (cst_date_column).set_title ("date")
-			logs_c.set_short_title ("Logs ...")
-			logs_c.set_long_title ("Repository Logs ...")
-			dm.contents.extend (logs_c)
-			logs_c.set_top ({SD_ENUMERATION}.right)
-			logs_grid := g
-			logs_grid_content := logs_c
-
-			info_c := info_content
---			create g
---			create logs_c.make_with_widget (g, "Logs...")
-			g.enable_single_row_selection
-			g.set_column_count_to (1)
-			g.hide_header
-			info_c.set_short_title ("Info ...")
-			info_c.set_long_title ("Log Info ...")
-			dm.contents.extend (info_c)
-			info_c.set_relative (logs_c, {SD_ENUMERATION}.bottom)
-			info_grid := g
-			info_content := info_c
-
-			show_actions.extend_kamikaze (agent (ac0,ac1,ac2: SD_CONTENT)
-					do
-						ac0.set_split_proportion ({REAL_32} 0.7)
-						ac1.set_split_proportion ({REAL_32} 0.3)
-						ac2.set_split_proportion ({REAL_32} 0.8)
-					end (cat_c, logs_c, info_c)
-				)
-		end
-
-	catalog_grid_content: SD_CONTENT
-	catalog_grid: EV_GRID
-
-	current_data: detachable REPOSITORY_DATA
-
-	logs_grid_content: SD_CONTENT
-	logs_grid: EV_GRID
-
-	info_content: SD_CONTENT
-	info_grid: EV_GRID
-
-
-	on_catalog_row_selected	(r: EV_GRID_ROW)
-		local
-			ctrl_pressed: BOOLEAN
-		do
-			ctrl_pressed := ev_application.ctrl_pressed
-			if attached {REPOSITORY_SVN_DATA} r.data as rsvndata then
-				if current_data /= rsvndata or ctrl_pressed then
-					current_data := rsvndata
-					rsvndata.get_logs (ctrl_pressed)
-					update_logs
-				end
+			if attached a_row.parent as g then
+				a_row.set_background_color (g.background_color)
 			end
 		end
 
@@ -404,18 +841,70 @@ feature {NONE} -- Implementation
 
 feature {NONE} -- Implementation / Constants
 
-	cst_revision_column: INTEGER = 1
-	cst_log_column: INTEGER = 3
-	cst_author_column: INTEGER = 2
-	cst_date_column: INTEGER = 4
+	mark_repository_selected (r: EV_GRID_ROW)
+		do
+			if r.count > 0 and then attached {EV_GRID_LABEL_ITEM} r.item (cst_repo_name_column) as glab then
+				glab.set_pixmap (icons.active_cursor_icon)
+				glab.set_font (font_selected_repository)
+			end
+		end
+
+	mark_repository_unselected (r: EV_GRID_ROW)
+		do
+			if r.count > 0 and then attached {EV_GRID_LABEL_ITEM} r.item (cst_repo_name_column) as glab then
+				glab.remove_pixmap
+				glab.set_font (font_default)
+			end
+		end
+
+	mark_repository_unread (a_row: EV_GRID_ROW)
+		local
+			n,c: INTEGER
+			ft: EV_FONT
+		do
+			n := a_row.count
+			ft := font_unread_log
+			from
+				c := 1
+			until
+				c > n
+			loop
+				if attached {EV_GRID_LABEL_ITEM} a_row.item (c) as l_lab then
+					l_lab.set_font (ft)
+				end
+				c := c + 1
+			end
+		end
+
+	mark_repository_read (a_row: EV_GRID_ROW)
+		local
+			n,c: INTEGER
+			ft: EV_FONT
+		do
+			n := a_row.count
+			ft := font_read_log
+			from
+				c := 1
+			until
+				c > n
+			loop
+				if attached {EV_GRID_LABEL_ITEM} a_row.item (c) as l_lab then
+					l_lab.set_font (ft)
+				end
+				c := c + 1
+			end
+		end
+
+	cst_repo_name_column: INTEGER = 1
+	cst_repo_uuid_column: INTEGER = 2
 
 	Window_title: STRING = "Commit Then Review"
 			-- Title of the window.
 
-	Window_width: INTEGER = 400
+	Window_width: INTEGER = 700
 			-- Initial width for this window.
 
-	Window_height: INTEGER = 400
+	Window_height: INTEGER = 600
 			-- Initial height for this window.
 
 note

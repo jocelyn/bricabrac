@@ -15,7 +15,8 @@ inherit
 
 create
 	make,
-	make_with_location
+	make_with_location,
+	make_from_repository
 
 feature {NONE} -- Initialization
 
@@ -30,6 +31,15 @@ feature {NONE} -- Initialization
 		do
 			make
 			set_location (a_loc)
+		end
+
+	make_from_repository (a_repo: like Current)
+		do
+			make
+			location := a_repo.location.string
+		ensure
+			new_engine: engine /= a_repo.engine
+			same_location: location ~ a_repo.location
 		end
 
 feature -- Access
@@ -49,6 +59,11 @@ feature -- Access
 	logs (is_verbose: BOOLEAN; a_start, a_end: INTEGER; a_limit: INTEGER): detachable LIST [SVN_REVISION_INFO]
 		do
 			Result := engine.logs (location, is_verbose, a_start, a_end, a_limit)
+		end
+
+	revision_diff (a_rev: SVN_REVISION_INFO): detachable STRING
+		do
+			Result := engine.diff (location, a_rev.revision, 0)
 		end
 
 feature -- Element change

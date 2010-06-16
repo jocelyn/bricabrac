@@ -27,20 +27,42 @@ feature -- Access
 		deferred
 		end
 
+	username: detachable STRING
+
+	password: detachable STRING
+
+	review_enabled: BOOLEAN
+
 feature -- Element change
+
+	set_review_enabled (v: like review_enabled)
+		do
+			review_enabled := v
+		ensure
+			commit_then_review_enabled_set: review_enabled = v
+		end
 
 	set_uuid (u: like uuid)
 		do
 			uuid := u
 		end
 
---	set_location (v: like location)
---		require
---			v_attached: v /= Void
---		do
---			location := v
---		ensure
---			location_set: v ~ location
---		end
+	set_username (v: like username)
+		require
+			v_attached: v /= Void
+		do
+			username := v
+		ensure
+			username_set: v ~ username
+		end
+
+	set_password (v: like password)
+		require
+			v_attached: v /= Void
+		do
+			password := v
+		ensure
+			password_set: v ~ password
+		end
 
 end
