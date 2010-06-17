@@ -24,6 +24,8 @@ feature -- Access
 			create Result
 		end
 
+feature -- Colors
+
 	colors: EV_STOCK_COLORS
 		once
 			create Result
@@ -48,6 +50,8 @@ feature -- Access
 		once
 			create Result.make_with_8_bit_rgb (0,0,255)
 		end
+
+feature -- Fonts
 
 	font_bold: EV_FONT
 		local

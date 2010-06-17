@@ -136,6 +136,7 @@ feature -- Review
 			l_line: STRING
 			p,m: INTEGER
 			s: STRING
+			l_remote: BOOLEAN
 			t: like {REPOSITORY_LOG_REVIEW}.user_review
 			l_reviews: like {REPOSITORY_LOG_REVIEW}.reviews
 		do
@@ -157,13 +158,20 @@ feature -- Review
 					else
 						p := l_line.index_of (':', 1)
 						if p > 0 then
-							s := l_line.substring (1, p - 1)
+							s := l_line.substring (1, p - 1) --| User
 							m := p + 1
+							l_remote := l_line.item (m) = '@'
+							if l_remote then
+								m := m + 1
+							end
 							p := l_line.index_of (':', m)
 							if p > 0 then
-								t := [s, l_line.substring (m, p - 1), l_line.substring (p + 1, l_line.count)]
+								create t.make (s, l_line.substring (m, p - 1))
+								t.set_comment (l_line.substring (p + 1, l_line.count))
+								t.set_is_remote (l_remote)
 							else
-								t := [s, l_line.substring (m, l_line.count), Void]
+								create t.make (s, l_line.substring (m, l_line.count))
+								t.set_is_remote (l_remote)
 							end
 							l_reviews.extend (t)
 						end
@@ -361,7 +369,7 @@ feature -- Persistence
 	store_log_review (a_log: REPOSITORY_LOG; a_review: REPOSITORY_LOG_REVIEW)
 		local
 			f: RAW_FILE
---			tt: like {REPOSITORY_LOG_REVIEW}.user_review
+--BUG--			tt: like {REPOSITORY_LOG_REVIEW}.user_review_tuple
 		do
 			ensure_review_data_folder_exists
 			create f.make (log_review_data_filename (a_log))
@@ -373,12 +381,14 @@ feature -- Persistence
 					until
 						l_reviews.after
 					loop
---						tt := l_reviews.item
---						print (tt.status)
+--BUG--						create tt; print (tt.status)
 						if attached l_reviews.item as t then
-							if not a_review.is_none_status (t.status) then
+							if not t.is_none_status then
 								f.put_string (l_reviews.item.user)
 								f.put_character (':')
+								if t.is_remote then
+									f.put_character ('@')
+								end
 								f.put_string (l_reviews.item.status)
 								if attached l_reviews.item.comment as l_comment then
 									f.put_character (':')

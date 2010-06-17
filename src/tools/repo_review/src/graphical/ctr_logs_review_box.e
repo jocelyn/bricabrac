@@ -23,6 +23,7 @@ feature {NONE} -- Initialization
 	make (a_tool: CTR_LOGS_TOOL)
 		do
 			logs_tool := a_tool
+			create user_name.make_empty
 			build_interface
 		end
 
@@ -78,11 +79,13 @@ feature {NONE} -- Initialization
 
 feature -- Access
 
-	widget: EV_WIDGET
+	widget: EV_BOX
 
 	logs_tool: CTR_LOGS_TOOL
 
 	current_log: detachable REPOSITORY_LOG
+
+	user_name: STRING
 
 	button_approve: SD_TOOL_BAR_TOGGLE_BUTTON
 	button_refuse: SD_TOOL_BAR_TOGGLE_BUTTON
@@ -104,12 +107,10 @@ feature -- Event
 				if r = Void then
 					create r.make
 				end
-				if attached l_log.parent.username as l_user then
-					if button_approve.is_selected then
-						r.approve (l_user)
-					else
-						r.unapprove (l_user)
-					end
+				if button_approve.is_selected then
+					r.approve (user_name)
+				else
+					r.unapprove (user_name)
 				end
 				apply (l_log, r)
 			end
@@ -126,12 +127,10 @@ feature -- Event
 				if r = Void then
 					create r.make
 				end
-				if attached l_log.parent.username as l_user then
-					if button_refuse.is_selected then
-						r.refuse (l_user)
-					else
-						r.unrefuse (l_user)
-					end
+				if button_refuse.is_selected then
+					r.refuse (user_name)
+				else
+					r.unrefuse (user_name)
 				end
 				apply (l_log, r)
 			end
@@ -148,12 +147,10 @@ feature -- Event
 				if r = Void then
 					create r.make
 				end
-				if attached l_log.parent.username as l_user then
-					if button_question.is_selected then
-						r.question (l_user, "???")
-					else
-						r.unquestion (l_user)
-					end
+				if button_question.is_selected then
+					r.question (user_name, "???")
+				else
+					r.unquestion (user_name)
 				end
 				apply (l_log, r)
 			end
@@ -167,7 +164,47 @@ feature -- Event
 		end
 
 	on_submit
+		local
+			r: STRING
+			e: like {REPOSITORY_LOG_REVIEW}.user_review
 		do
+			if attached current_log as l_log then
+				create r.make_empty
+				r.append_string (l_log.id)
+				r.append_character ('[')
+				r.append_string (user_name)
+				r.append_character (']')
+
+				if
+					attached l_log.review as l_review and then
+					attached l_review.user_local_entries (user_name, Void) as l_entries
+				then
+					across
+						l_entries as c
+					loop
+						e := c.item
+						r.append_character ('(')
+						r.append_string (e.status)
+						if attached e.comment as l_comment then
+							r.append_character (':')
+							r.append_string (l_comment)
+						end
+						r.append_character (')')
+						r.append_character (' ')
+					end
+
+					-- Remote call !!!
+
+					across
+						l_entries as c
+					loop
+						e := c.item
+						e.set_is_remote (True)
+					end
+					apply (l_log, l_review)
+				end
+				print (r + "%N")
+			end
 		end
 
 feature -- Basic operation
@@ -176,37 +213,62 @@ feature -- Basic operation
 		local
 			l_rdata: detachable like {REPOSITORY_LOG_REVIEW}.user_review
 			r: detachable REPOSITORY_LOG_REVIEW
+			l_state: INTEGER --| 0: no user review; 1: local user review; 2: remote user review
 		do
+			if current_log /= a_log then
+				user_name.wipe_out
+				if
+					a_log /= Void and then
+					attached a_log.parent.username as u
+				then
+					user_name.append_string (u)
+				end
+			end
 			current_log := a_log
 			if a_log /= Void and then a_log.has_review then
 				r := a_log.review
 				if r /= Void then
-					if attached a_log.parent.username as l_user then
-						l_rdata := r.user_review (l_user, Void)
-					end
+					l_rdata := r.user_review (user_name, Void)
 				end
 			end
 			if r = Void or l_rdata = Void then
 				button_approve.disable_select
 				button_refuse.disable_select
 				button_question.disable_select
+				button_submit.disable_sensitive
 			else
-				if r.is_approved_status (l_rdata.status) then
+				l_state := 1
+				if l_rdata.is_approved_status then
 					button_approve.enable_select
 				else
 					button_approve.disable_select
 				end
-				if r.is_refused_status (l_rdata.status) then
+				if l_rdata.is_refused_status then
 					button_refuse.enable_select
 				else
 					button_refuse.disable_select
 				end
-				if r.is_question_status (l_rdata.status) then
+				if l_rdata.is_question_status then
 					button_question.enable_select
 				else
 					button_question.disable_select
 				end
+				if not l_rdata.is_remote then
+					button_submit.enable_sensitive
+				else
+					l_state := 2
+					button_submit.disable_sensitive
+				end
 			end
+			inspect l_state
+			when 1 then
+				widget.set_background_color (colors.cyan) -- local			
+			when 2 then
+				widget.set_background_color (colors.white)	-- remote			
+			else
+				widget.set_background_color (colors.yellow)
+			end
+			widget.propagate_background_color
 		end
 
 	show

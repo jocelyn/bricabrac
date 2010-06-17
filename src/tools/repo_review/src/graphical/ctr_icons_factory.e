@@ -77,11 +77,33 @@ feature -- Catalog tool
 			Result.fill_rectangle (2, 2, 6, 6)
 		end
 
-	action_review_icon: EV_PIXMAP
+	review_approved_icon: EV_PIXMAP
 		local
 			fcol: EV_COLOR
 		once
-			create fcol.make_with_8_bit_rgb (0,210,0)
+			create fcol.make_with_8_bit_rgb (0,190,0)
+			create Result.make_with_size (10, 10)
+			Result.set_foreground_color (fcol)
+			Result.set_font (icon_grid_bold_font)
+			Result.draw_text_top_left (1, 1, "O")
+		end
+
+	review_refused_icon: EV_PIXMAP
+		local
+			fcol: EV_COLOR
+		once
+			create fcol.make_with_8_bit_rgb (190, 0,0)
+			create Result.make_with_size (10, 10)
+			Result.set_foreground_color (fcol)
+			Result.set_font (icon_grid_bold_font)
+			Result.draw_text_top_left (1, 1, "X")
+		end
+
+	review_question_icon: EV_PIXMAP
+		local
+			fcol: EV_COLOR
+		once
+			create fcol.make_with_8_bit_rgb (0,0, 190)
 			create Result.make_with_size (10, 10)
 			Result.set_foreground_color (fcol)
 			Result.set_font (icon_grid_bold_font)

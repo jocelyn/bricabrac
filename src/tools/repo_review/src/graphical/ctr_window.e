@@ -121,6 +121,7 @@ feature {NONE} -- Events
 		local
 			r: INTEGER
 			g: like catalog_grid
+			l_row: EV_GRID_ROW
 		do
 			if attached catalog as cat then
 				from
@@ -129,7 +130,9 @@ feature {NONE} -- Events
 				until
 					r > g.row_count
 				loop
-					if attached {REPOSITORY_DATA} g.row (r).data as rdata then
+					l_row := g.row (r)
+					
+					if attached {REPOSITORY_DATA} l_row.data as rdata then
 						rdata.save_unread_logs
 					end
 					r := r + 1

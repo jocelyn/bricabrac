@@ -206,7 +206,7 @@ feature -- Basic operations
 				r := r + 1
 			end
 			if l_row /= Void then
-
+				compute_row (a_log, l_row)
 			end
 		end
 
@@ -257,14 +257,46 @@ feature {CTR_WINDOW} -- Implementation
 		end
 
 	compute_row (a_log: REPOSITORY_LOG; a_row: EV_GRID_ROW)
+		require
+			row_has_log: a_row.data = a_log
 		local
 			glab_buts: EV_GRID_PIXMAPS_ON_RIGHT_LABEL_ITEM
 			glab: EV_GRID_LABEL_ITEM
+			c: INTEGER
+			stats: like {REPOSITORY_LOG_REVIEW}.stats
 		do
 			if a_log.has_review and then attached a_log.review as l_review then
+				c := 0
+				stats := l_review.stats
+				if stats.approved > 0 then
+					c := c + 1
+				end
+				if stats.refused > 0 then
+					c := c + 1
+				end
+				if stats.question > 0 then
+					c := c + 1
+				end
+
 				create glab_buts.make_with_text (a_log.id)
-				glab_buts.set_pixmaps_on_right_count (1)
-				glab_buts.put_pixmap_on_right (icons.action_review_icon, 1)
+				if stats.approved > stats.refused then
+					glab_buts.set_foreground_color (colors.dark_green)
+				elseif stats.approved < stats.refused then
+					glab_buts.set_foreground_color (colors.dark_red)
+				end
+
+				glab_buts.set_pixmaps_on_right_count (c)
+				if stats.question > 0 then
+					glab_buts.put_pixmap_on_right (icons.review_question_icon, c)
+					c := c - 1
+				end
+				if stats.approved > 0 then
+					glab_buts.put_pixmap_on_right (icons.review_approved_icon, c)
+					c := c - 1
+				end
+				if stats.refused > 0 then
+					glab_buts.put_pixmap_on_right (icons.review_refused_icon, c)
+				end
 				a_row.set_item (cst_revision_column, glab_buts)
 			else
 				a_row.set_item (cst_revision_column, create {EV_GRID_LABEL_ITEM}.make_with_text (a_log.id))

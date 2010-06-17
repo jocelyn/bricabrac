@@ -21,6 +21,62 @@ feature -- Access
 
 	reviews: LIST [like new_user_review]
 
+	user_review_tuple (a_user: STRING; a_status: detachable STRING): detachable like new_user_review_tuple
+		do
+		end
+
+	new_user_review_tuple (a_user: STRING): TUPLE [user: STRING; status: STRING; comment: detachable STRING; is_remote: BOOLEAN]
+		do
+			Result := [a_user, "", Void, False]
+		end
+
+	user_entries (a_user: STRING; a_status: detachable STRING): LIST [like new_user_review]
+		local
+			l_reviews: like reviews
+			e: like new_user_review
+		do
+			create {ARRAYED_LIST [like new_user_review]} Result.make (1)
+			l_reviews := reviews
+			from
+				l_reviews.start
+			until
+				l_reviews.after
+			loop
+				e := l_reviews.item
+				if e.user.is_case_insensitive_equal (a_user) then
+					if a_status = Void or else e.is_status (a_status) then
+						Result.force (e)
+					end
+				end
+				l_reviews.forth
+			end
+		end
+
+	user_local_entries (a_user: STRING; a_status: detachable STRING): LIST [like new_user_review]
+		local
+			l_reviews: like reviews
+			e: like new_user_review
+		do
+			create {ARRAYED_LIST [like new_user_review]} Result.make (1)
+			l_reviews := reviews
+			from
+				l_reviews.start
+			until
+				l_reviews.after
+			loop
+				e := l_reviews.item
+				if
+					not e.is_remote and then
+					e.user.is_case_insensitive_equal (a_user)
+				then
+					if a_status = Void or else e.is_status (a_status) then
+						Result.force (e)
+					end
+				end
+				l_reviews.forth
+			end
+		end
+
 	user_review (a_user: STRING; a_status: detachable STRING): detachable like new_user_review
 		local
 			l_reviews: like reviews
@@ -43,9 +99,9 @@ feature -- Access
 			end
 		end
 
-	new_user_review (a_user: STRING): TUPLE [user: STRING; status: STRING; comment: detachable STRING]
+	new_user_review (a_user: STRING): REPOSITORY_LOG_REVIEW_ENTRY
 		do
-			Result := [a_user, "", Void]
+			create Result.make (a_user, "")
 			reviews.extend (Result)
 		end
 
@@ -59,7 +115,7 @@ feature -- Basic operations
 			if l_rdata = Void then
 				l_rdata := new_user_review (a_user)
 			end
-			l_rdata.status := status_approved
+			l_rdata.approve
 		end
 
 	refuse (a_user: STRING)
@@ -70,44 +126,43 @@ feature -- Basic operations
 			if l_rdata = Void then
 				l_rdata := new_user_review (a_user)
 			end
-			l_rdata.status := status_refused
+			l_rdata.refuse
 		end
 
 	question (a_user: STRING; q: detachable STRING)
 		local
 			l_rdata: like {REPOSITORY_LOG_REVIEW}.user_review
 		do
-			l_rdata := user_review (a_user, status_question)
+			l_rdata := user_review (a_user, {REPOSITORY_LOG_REVIEW_ENTRY}.status_question)
 			if l_rdata = Void then
 				l_rdata := new_user_review (a_user)
 			end
-			l_rdata.status := status_question
-			l_rdata.comment := q
+			l_rdata.ask (q)
 		end
 
 	unapprove (a_user: STRING)
 		do
-			if attached user_review (a_user, status_approved) as l_rdata then
-				check is_approved_status (l_rdata.status) end
-				l_rdata.status := status_none
+			if attached user_review (a_user, {REPOSITORY_LOG_REVIEW_ENTRY}.status_approved) as l_rdata then
+				check l_rdata.is_approved_status end
+				l_rdata.discard
 				reviews.prune (l_rdata)
 			end
 		end
 
 	unrefuse (a_user: STRING)
 		do
-			if attached user_review (a_user, status_refused) as l_rdata then
-				check is_refused_status (l_rdata.status) end
-				l_rdata.status := status_none
+			if attached user_review (a_user, {REPOSITORY_LOG_REVIEW_ENTRY}.status_refused) as l_rdata then
+				check l_rdata.is_refused_status end
+				l_rdata.discard
 				reviews.prune (l_rdata)
 			end
 		end
 
 	unquestion (a_user: STRING)
 		do
-			if attached user_review (a_user, status_question) as l_rdata then
-				check is_question_status (l_rdata.status) end
-				l_rdata.status := status_none
+			if attached user_review (a_user, {REPOSITORY_LOG_REVIEW_ENTRY}.status_question) as l_rdata then
+				check l_rdata.is_question_status end
+				l_rdata.discard
 				reviews.prune (l_rdata)
 			end
 		end
@@ -119,7 +174,7 @@ feature -- Status report
 			n_refused: INTEGER
 			n_approved: INTEGER
 			n_question: INTEGER
-			s: STRING
+			e: like user_review
 		do
 			if attached reviews as l_reviews then
 				from
@@ -127,14 +182,13 @@ feature -- Status report
 				until
 					l_reviews.after
 				loop
-					s := l_reviews.item.status
-					s.to_lower
-					if s.is_empty then
-					elseif is_approved_status (s) then
+					e := l_reviews.item
+					if e.is_none_status then
+					elseif e.is_approved_status then
 						n_approved := n_approved + 1
-					elseif is_refused_status (s) then
+					elseif e.is_refused_status then
 						n_refused := n_refused + 1
-					elseif is_question_status (s) then
+					elseif e.is_question_status then
 						n_question := n_question + 1
 					end
 					l_reviews.forth
@@ -166,44 +220,5 @@ feature -- Status report
 			st := stats
 			Result := st.question > 0
 		end
-
-	is_valid_status (s: STRING): BOOLEAN
-		do
-			Result := True
-			if s.is_empty then
-			elseif s.is_case_insensitive_equal (status_approved) then
-			elseif s.is_case_insensitive_equal (status_refused) then
-			elseif s.is_case_insensitive_equal (status_question) then
-			else
-				Result := False
-			end
-		end
-
-feature -- Status value
-
-	is_none_status (s: STRING): BOOLEAN
-		do
-			Result := s.is_empty
-		end
-
-	is_refused_status (s: STRING): BOOLEAN
-		do
-			Result := s.count = 2 and then s.item (1) = 'n' and then s.item (2) = 'o'
-		end
-
-	is_approved_status (s: STRING): BOOLEAN
-		do
-			Result := s.count = 3 and then s.item (1) = 'y' and then s.item (2) = 'e' and then s.item (3) = 's'
-		end
-
-	is_question_status (s: STRING): BOOLEAN
-		do
-			Result := s.count = 8 and then s.item (1) = 'q' and then s.is_case_insensitive_equal (status_question)
-		end
-
-	status_none: STRING = ""
-	status_approved: STRING = "yes"
-	status_refused: STRING = "no"
-	status_question: STRING = "question"
 
 end
