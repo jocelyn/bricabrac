@@ -131,7 +131,7 @@ feature {NONE} -- Events
 					r > g.row_count
 				loop
 					l_row := g.row (r)
-					
+
 					if attached {REPOSITORY_DATA} l_row.data as rdata then
 						rdata.save_unread_logs
 					end
@@ -732,12 +732,12 @@ feature {NONE} -- Implementation
 			create mtb.make
 			create tbbut.make
 			tbbut.set_pixmap (icons.new_check_small_toolbar_button_icon)
---			tbbut.set_text ("Check")
 			tbbut.select_actions.extend (agent check_selected_repositories)
 			mtb.extend (tbbut)
+
 			mtb.compute_minimum_size
 			cat_c.set_mini_toolbar (mtb)
---			cat_c.update_mini_tool_bar_size
+
 --			g.enable_tree
 			g.enable_multiple_row_selection
 			g.set_column_count_to (1)

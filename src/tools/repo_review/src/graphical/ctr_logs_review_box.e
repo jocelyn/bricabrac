@@ -41,6 +41,7 @@ feature {NONE} -- Initialization
 			b.set_border_width (2)
 
 			create tb.make
+			tool_bar := tb
 			create tbtb.make
 			tbtb.set_text ("Approve")
 			tb.extend (tbtb)
@@ -87,6 +88,8 @@ feature -- Access
 
 	user_name: STRING
 
+
+	tool_bar: SD_TOOL_BAR
 	button_approve: SD_TOOL_BAR_TOGGLE_BUTTON
 	button_refuse: SD_TOOL_BAR_TOGGLE_BUTTON
 	button_question: SD_TOOL_BAR_TOGGLE_BUTTON
@@ -165,45 +168,20 @@ feature -- Event
 
 	on_submit
 		local
-			r: STRING
 			e: like {REPOSITORY_LOG_REVIEW}.user_review
 		do
-			if attached current_log as l_log then
-				create r.make_empty
-				r.append_string (l_log.id)
-				r.append_character ('[')
-				r.append_string (user_name)
-				r.append_character (']')
-
-				if
-					attached l_log.review as l_review and then
-					attached l_review.user_local_entries (user_name, Void) as l_entries
-				then
-					across
-						l_entries as c
-					loop
-						e := c.item
-						r.append_character ('(')
-						r.append_string (e.status)
-						if attached e.comment as l_comment then
-							r.append_character (':')
-							r.append_string (l_comment)
-						end
-						r.append_character (')')
-						r.append_character (' ')
+			if
+				attached current_log as l_log and then
+				attached l_log.review as l_review
+			then
+				-- Remote call !!!
+				if attached l_log.parent.review_client as l_client then
+					l_client.submit (l_log, l_review)
+					if l_client.last_error_occurred then
+						print (l_client.last_error_message + "%N")
 					end
-
-					-- Remote call !!!
-
-					across
-						l_entries as c
-					loop
-						e := c.item
-						e.set_is_remote (True)
-					end
-					apply (l_log, l_review)
 				end
-				print (r + "%N")
+				apply (l_log, l_review)
 			end
 		end
 
@@ -269,6 +247,13 @@ feature -- Basic operation
 				widget.set_background_color (colors.yellow)
 			end
 			widget.propagate_background_color
+			tool_bar.hide
+			tool_bar.show
+		end
+
+	reset
+		do
+			update_current_log (Void)
 		end
 
 	show

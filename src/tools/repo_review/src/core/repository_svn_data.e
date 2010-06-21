@@ -14,7 +14,8 @@ inherit
 			repository,
 			fetch_diff,
 			logs,
-			delete_log
+			delete_log,
+			archive_log
 		end
 
 create
@@ -373,6 +374,25 @@ feature {REPOSITORY_SVN_LOG} -- Implementation
 
 feature -- Persistence
 
+	archive_log (a_log: REPOSITORY_LOG)
+		local
+			f: RAW_FILE
+			l_id: STRING
+		do
+			Precursor (a_log)
+			l_id := a_log.id
+			if attached logs as l_logs then
+				if l_logs.has_key (l_id) then
+					l_logs.remove (l_id)
+				end
+			end
+			create f.make (log_data_filename (a_log))
+			if f.exists then
+				ensure_folder_exists (archive_data_folder_name)
+				move_file (f, archive_log_data_filename (a_log))
+			end
+		end
+
 	delete_log (a_log: REPOSITORY_LOG)
 		local
 			f: RAW_FILE
@@ -385,7 +405,7 @@ feature -- Persistence
 					l_logs.remove (l_id)
 				end
 			end
-			create f.make (svn_log_data_filename (l_id))
+			create f.make (log_data_filename (a_log))
 			if f.exists then
 				f.delete
 			end
@@ -394,13 +414,37 @@ feature -- Persistence
 
 feature {NONE} -- Implementation
 
+	logs_data_folder_name: like data_folder_name
+		do
+			Result := data_folder_name
+		end
+
+	archive_logs_data_folder_name: like archive_data_folder_name
+		do
+			Result := archive_data_folder_name
+		end
+
+	archive_svn_log_data_filename (r: STRING): STRING
+		local
+			fn: FILE_NAME
+		do
+			create fn.make_from_string (archive_logs_data_folder_name)
+			fn.set_file_name (r)
+			Result := fn.string
+		end
+
 	svn_log_data_filename (r: STRING): STRING
 		local
 			fn: FILE_NAME
 		do
-			create fn.make_from_string (data_folder_name)
+			create fn.make_from_string (logs_data_folder_name)
 			fn.set_file_name (r)
 			Result := fn.string
+		end
+
+	archive_log_data_filename (a_log: REPOSITORY_LOG): STRING
+		do
+			Result := archive_svn_log_data_filename (a_log.id)
 		end
 
 	log_data_filename (a_log: REPOSITORY_LOG): STRING

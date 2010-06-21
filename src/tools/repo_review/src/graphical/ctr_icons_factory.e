@@ -30,12 +30,10 @@ feature -- Catalog tool
 			create Result.make_with_values (Result.family, Result.weight, Result.shape, small_tool_bar_button_icon_font_height)
 		end
 
-	new_check_small_toolbar_button_icon: EV_PIXMAP
+	new_custom_text_small_toolbar_button_icon (t: STRING_GENERAL): EV_PIXMAP
 		local
 			bcol,fcol,borcol: EV_COLOR
-			t: STRING_32
 		do
-			t := "Check"
 			create Result.make_with_size (icon_font.string_width (t) + 2, small_tool_bar_button_icon_height)
 
 			create bcol.make_with_8_bit_rgb (255,210,190)
@@ -48,23 +46,24 @@ feature -- Catalog tool
 			Result.draw_text_top_left (1, 0, t)
 		end
 
+	new_check_small_toolbar_button_icon: EV_PIXMAP
+		do
+			Result := new_custom_text_small_toolbar_button_icon ("Check")
+		end
+
+	new_remove_small_toolbar_button_icon: EV_PIXMAP
+		do
+			Result := new_custom_text_small_toolbar_button_icon ("Delete")
+		end
+
+	new_archive_small_toolbar_button_icon: EV_PIXMAP
+		do
+			Result := new_custom_text_small_toolbar_button_icon ("Archive")
+		end
 
 	new_diff_small_toolbar_button_icon: EV_PIXMAP
-		local
-			bcol,fcol,borcol: EV_COLOR
-			t: STRING_32
 		do
-			t := "Diff"
-			create Result.make_with_size (icon_font.string_width (t) + 2, small_tool_bar_button_icon_height)
-
-			create bcol.make_with_8_bit_rgb (255,210,190)
-			create fcol.make_with_8_bit_rgb (0,0,0)
-			create borcol.make_with_8_bit_rgb (210,190,60)
-			Result.set_background_color (bcol)
-			Result.set_foreground_color (fcol)
-			Result.clear
-			Result.set_font (icon_font)
-			Result.draw_text_top_left (1, 0, t)
+			Result := new_custom_text_small_toolbar_button_icon ("Diff")
 		end
 
 	active_cursor_icon: EV_PIXMAP

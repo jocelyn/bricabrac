@@ -38,10 +38,15 @@ feature {NONE} -- Initialization
 			c.set_long_title ("Info")
 			create mtb.make
 			create tbbut.make
---			tbbut.set_text ("diff")
 			tbbut.set_pixmap (icons.new_diff_small_toolbar_button_icon)
 			tbbut.select_actions.extend (agent show_info_diff)
 			mtb.extend (tbbut)
+
+			create tbbut.make
+			tbbut.set_pixmap (icons.new_custom_text_small_toolbar_button_icon ("Open Data Folder"))
+			tbbut.select_actions.extend (agent open_data_folder)
+			mtb.extend (tbbut)
+
 			mtb.compute_minimum_size
 			c.set_mini_toolbar (mtb)
 		end
@@ -246,6 +251,27 @@ feature -- Element change
 		end
 
 feature {NONE} -- Implementation
+
+	open_data_folder
+		local
+			exec: EXECUTION_ENVIRONMENT
+			s: detachable STRING
+		do
+			if attached current_repository as r then
+				s := r.data_folder_name
+			elseif attached current_log as l_log then
+				s := l_log.parent.data_folder_name
+			end
+			if s /= Void then
+				create exec
+				if attached exec.get ("COMSPEC") as l_comspec then
+					s := l_comspec + " /C start " + s
+				else
+					s := "explorer " + s
+				end
+				exec.launch (s)
+			end
+		end
 
 	popup_diff (a_log: REPOSITORY_LOG)
 		do

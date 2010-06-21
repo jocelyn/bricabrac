@@ -10,15 +10,22 @@ deferred class
 feature {NONE} -- Initialization
 
 	make (a_uuid: UUID; a_repo: like repository)
+		local
+			sep: STRING
 		do
+			sep := operating_environment.directory_separator.out
 			uuid := a_uuid
 			repository := a_repo
 			create unread_logs.make (100)
 			unread_logs.compare_objects
 
-			data_folder_name := "data" + operating_environment.directory_separator.out + a_uuid.out + "_logs"
-			diff_data_folder_name := data_folder_name + operating_environment.directory_separator.out + "_diff"
-			review_data_folder_name := data_folder_name + operating_environment.directory_separator.out + "_review"
+			data_folder_name := "data" + sep + a_uuid.out + "_logs"
+			diff_data_folder_name := data_folder_name + sep + "_diff"
+			review_data_folder_name := data_folder_name + sep + "_review"
+
+			archive_data_folder_name := "data" + sep + a_uuid.out + "_logs" + sep + "_archive"
+			archive_diff_data_folder_name := archive_data_folder_name + sep + "_diff"
+			archive_review_data_folder_name := archive_data_folder_name + sep + "_review"
 		end
 
 feature -- Access
@@ -44,6 +51,13 @@ feature -- Status report
 			Result := repository.review_enabled
 		end
 
+	review_client: detachable CTR_LOG_REVIEW_CLIENT_PROXY
+		require
+			review_enabled: review_enabled
+		do
+			create Result.make (repository)
+		end
+
 feature -- Access
 
 	username: detachable STRING
@@ -66,6 +80,28 @@ feature -- Element change
 	mark_log_read (a_id: STRING)
 		do
 			unread_logs.remove (a_id)
+		end
+
+	archive_log (a_log: REPOSITORY_LOG)
+		local
+			f: RAW_FILE
+			l_id: STRING
+		do
+			ensure_folder_exists (archive_data_folder_name)
+			l_id := a_log.id
+			if unread_logs.has (l_id) then
+				unread_logs.remove (l_id)
+			end
+			create f.make (log_diff_data_filename (a_log))
+			if f.exists then
+				ensure_folder_exists (archive_diff_data_folder_name)
+				move_file (f, archive_log_diff_data_filename (a_log))
+			end
+			create f.make (log_review_data_filename (a_log))
+			if f.exists then
+				ensure_folder_exists (archive_review_data_folder_name)
+				move_file (f, archive_log_review_data_filename (a_log))
+			end
 		end
 
 	delete_log (a_log: REPOSITORY_LOG)
@@ -189,6 +225,12 @@ feature -- Storage filename
 
 	review_data_folder_name: STRING
 
+	archive_data_folder_name: STRING
+
+	archive_diff_data_folder_name: STRING
+
+	archive_review_data_folder_name: STRING
+
 
 	log_diff_data_filename (a_log: REPOSITORY_LOG): STRING
 		local
@@ -205,6 +247,26 @@ feature -- Storage filename
 			fn: FILE_NAME
 		do
 			create fn.make_from_string (review_data_folder_name)
+			fn.set_file_name (a_log.id)
+			fn.add_extension ("review")
+			Result := fn.string
+		end
+
+	archive_log_diff_data_filename (a_log: REPOSITORY_LOG): STRING
+		local
+			fn: FILE_NAME
+		do
+			create fn.make_from_string (archive_diff_data_folder_name)
+			fn.set_file_name (a_log.id)
+			fn.add_extension ("diff")
+			Result := fn.string
+		end
+
+	archive_log_review_data_filename (a_log: REPOSITORY_LOG): STRING
+		local
+			fn: FILE_NAME
+		do
+			create fn.make_from_string (archive_review_data_folder_name)
 			fn.set_file_name (a_log.id)
 			fn.add_extension ("review")
 			Result := fn.string
@@ -369,7 +431,6 @@ feature -- Persistence
 	store_log_review (a_log: REPOSITORY_LOG; a_review: REPOSITORY_LOG_REVIEW)
 		local
 			f: RAW_FILE
---BUG--			tt: like {REPOSITORY_LOG_REVIEW}.user_review_tuple
 		do
 			ensure_review_data_folder_exists
 			create f.make (log_review_data_filename (a_log))
@@ -381,7 +442,6 @@ feature -- Persistence
 					until
 						l_reviews.after
 					loop
---BUG--						create tt; print (tt.status)
 						if attached l_reviews.item as t then
 							if not t.is_none_status then
 								f.put_string (l_reviews.item.user)
@@ -405,6 +465,24 @@ feature -- Persistence
 		end
 
 feature {NONE} -- Implementation
+
+	move_file (a_src: FILE; a_target: STRING)
+		local
+			f: RAW_FILE
+		do
+			create f.make (a_target)
+			if not f.exists or else f.is_writable then
+				f.create_read_write
+				if not a_src.is_open_read then
+					a_src.open_read
+					a_src.copy_to (f)
+					a_src.close
+				else
+					a_src.copy_to (f)
+				end
+				f.close
+			end
+		end
 
 	uuid: UUID
 

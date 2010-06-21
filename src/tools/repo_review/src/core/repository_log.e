@@ -63,6 +63,12 @@ feature -- Element change
 			parent.delete_log (Current)
 		end
 
+	archive
+		do
+			mark_read
+			parent.archive_log (Current)
+		end
+
 feature -- Status report
 
 	unread: BOOLEAN

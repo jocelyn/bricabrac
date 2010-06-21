@@ -52,6 +52,17 @@ feature {NONE} -- Initialization
 			tbbut.set_pixmap (icons.new_check_small_toolbar_button_icon)
 			tbbut.select_actions.extend (agent check_current_repository)
 			mtb.extend (tbbut)
+
+			create tbbut.make
+			tbbut.set_pixmap (icons.new_remove_small_toolbar_button_icon)
+			tbbut.select_actions.extend (agent delete_selected_row_logs)
+			mtb.extend (tbbut)
+
+			create tbbut.make
+			tbbut.set_pixmap (icons.new_archive_small_toolbar_button_icon)
+			tbbut.select_actions.extend (agent archive_selected_row_logs)
+			mtb.extend (tbbut)
+
 			mtb.compute_minimum_size
 			c.set_mini_toolbar (mtb)
 
@@ -98,6 +109,7 @@ feature -- Element change
 				build_review_bar
 			end
 			if attached review_bar as b then
+				b.reset
 				b.show
 			end
 		end
@@ -365,8 +377,11 @@ feature {CTR_WINDOW} -- Implementation
 				if ev_application.shift_pressed then
 					delete_selected_row_logs
 				end
+			when {EV_KEY_CONSTANTS}.key_a then
+				if ev_application.ctrl_pressed then
+					select_all_rows
+				end
 			else
-
 			end
 		end
 
@@ -391,8 +406,43 @@ feature {CTR_WINDOW} -- Implementation
 			end
 		end
 
-	delete_selected_row_logs
+	select_all_rows
 		local
+			g: like grid
+			r,n: INTEGER
+		do
+			g := grid
+			from
+				r := 1
+				n := g.row_count
+			until
+				r > n
+			loop
+				g.row (r).enable_select
+				r := r + 1
+			end
+		end
+
+	archive_selected_row_logs
+		do
+			if attached grid.selected_rows as l_rows and then l_rows.count > 0 then
+				across
+					l_rows as c
+				loop
+					if attached {REPOSITORY_LOG} c.item.data as l_log then
+						c.item.disable_select
+						l_log.archive
+						c.item.hide
+					end
+				end
+				current_log := Void
+				if attached ctr_window as w then
+					w.info_tool.update_current_repository (current_repository)
+				end
+			end
+		end
+
+	delete_selected_row_logs
 		do
 			if attached grid.selected_rows as l_rows and then l_rows.count > 0 then
 				across
