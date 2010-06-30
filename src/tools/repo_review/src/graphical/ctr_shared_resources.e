@@ -7,6 +7,9 @@ note
 class
 	CTR_SHARED_RESOURCES
 
+inherit
+	REPOSITORY_SHARED
+
 feature -- Access
 
 	icons: CTR_ICONS_FACTORY

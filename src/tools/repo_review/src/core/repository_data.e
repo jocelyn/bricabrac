@@ -7,6 +7,9 @@ note
 deferred class
 	REPOSITORY_DATA
 
+inherit
+	REPOSITORY_SHARED
+
 feature {NONE} -- Initialization
 
 	make (a_uuid: UUID; a_repo: like repository)
@@ -19,11 +22,11 @@ feature {NONE} -- Initialization
 			create unread_logs.make (100)
 			unread_logs.compare_objects
 
-			data_folder_name := "data" + sep + a_uuid.out + "_logs"
+			data_folder_name := Common_data_folder + sep + a_uuid.out + "_logs"
 			diff_data_folder_name := data_folder_name + sep + "_diff"
 			review_data_folder_name := data_folder_name + sep + "_review"
 
-			archive_data_folder_name := "data" + sep + a_uuid.out + "_logs" + sep + "_archive"
+			archive_data_folder_name := Common_data_folder + sep + a_uuid.out + "_logs" + sep + "_archive"
 			archive_diff_data_folder_name := archive_data_folder_name + sep + "_diff"
 			archive_review_data_folder_name := archive_data_folder_name + sep + "_review"
 		end
@@ -58,11 +61,23 @@ feature -- Status report
 			create Result.make (repository)
 		end
 
+	has_issue_url: BOOLEAN
+		do
+			Result := repository.issue_url_pattern /= Void
+		end
+
+	issue_url (s: STRING): detachable STRING
+		require
+			has_issue_url: has_issue_url
+		do
+			Result := repository.issue_url (s)
+		end
+
 feature -- Access
 
-	username: detachable STRING
+	review_username: detachable STRING
 		do
-			Result := repository.username
+			Result := repository.review_username
 		end
 
 feature -- Element change

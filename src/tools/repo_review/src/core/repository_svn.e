@@ -69,12 +69,8 @@ feature -- Access
 feature -- Element change
 
 	set_location (v: like location)
-		require
-			v_attached: v /= Void
 		do
 			location := v
-		ensure
-			location_set: v ~ location
 		end
 
 feature -- Implementation

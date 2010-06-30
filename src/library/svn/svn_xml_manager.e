@@ -21,7 +21,7 @@ feature -- Access
 			att: detachable XML_ATTRIBUTE
 			elt: XML_ELEMENT
 			resolver: XML_NAMESPACE_RESOLVER
-			parser: XML_CUSTOM_PARSER
+			parser: XML_LITE_CUSTOM_PARSER
 		do
 			if not retried then
 				if s /= Void then
@@ -103,7 +103,7 @@ feature -- Access
 			att: detachable XML_ATTRIBUTE
 			elt: detachable XML_ELEMENT
 			resolver: XML_NAMESPACE_RESOLVER
-			parser: XML_SIMPLE_PARSER
+			parser: XML_LITE_PARSER
 		do
 			if not retried then
 				if s /= Void then
@@ -205,7 +205,7 @@ feature -- Access
 			att: detachable XML_ATTRIBUTE
 			elt: XML_ELEMENT
 			resolver: XML_NAMESPACE_RESOLVER
-			parser: XML_CUSTOM_PARSER
+			parser: XML_LITE_CUSTOM_PARSER
 		do
 			if not retried then
 				if s /= Void then

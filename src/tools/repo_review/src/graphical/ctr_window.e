@@ -235,16 +235,26 @@ feature -- Layout
 
 feature -- Storage
 
+	catalog_ini_filename: STRING
+		local
+			fn: FILE_NAME
+		once
+			create fn.make_from_string (common_data_folder)
+			fn.set_file_name ("catalog")
+			fn.add_extension ("ini")
+			Result := fn.string
+		end
+
 	load_catalog_from_ini
 		local
 			cat: like catalog
 			rf: RAW_FILE
-			svn_repo: detachable REPOSITORY_SVN
-			n: detachable STRING
-			p: INTEGER
+			repo: detachable REPOSITORY
+			n,k: detachable STRING
+			p,i: INTEGER
 			s: STRING
 		do
-			create rf.make ("catalog.ini")
+			create rf.make (catalog_ini_filename)
 			if rf.exists then
 				rf.open_read
 				from
@@ -260,35 +270,59 @@ feature -- Storage
 						if s.item (1) = '#' then
 							--| skip
 						elseif s.item (1) = '[' then
-							if svn_repo /= Void and then attached svn_repo.location as loc then
+							if repo /= Void and then attached repo.location as loc then
 								if n /= Void then
-									cat.add_repository (n, svn_repo)
+									cat.add_repository (n, repo)
 								else
-									cat.add_repository (loc, svn_repo)
+									cat.add_repository (loc, repo)
 								end
 							end
 							s.right_adjust
 							n := s.substring (2, s.last_index_of (']', s.count) - 1)
+							i := n.index_of (':', 1)
+							if i > 0 then
+								k := n.substring (1, i - 1)
+								k.left_adjust
+								k.right_adjust
+								k.to_lower
+								n := n.substring (i + 1, n.count)
+							end
 							n.left_adjust
 							n.right_adjust
-							create svn_repo.make
-						elseif svn_repo /= Void then
+							if k /= Void and then not k.is_empty then
+								if k.same_string ("svn") then
+									create {REPOSITORY_SVN} repo.make
+								else
+									--|, cvs, git, ...
+									create {REPOSITORY_SVN} repo.make
+								end
+							end
+						elseif repo /= Void then
 							p := s.index_of ('=', 1)
 							if s.substring (1, p -1).same_string ("uuid") then
 								s.right_adjust
-								svn_repo.set_uuid (create {UUID}.make_from_string (s.substring (p + 1, s.count)))
+								repo.set_uuid (create {UUID}.make_from_string (s.substring (p + 1, s.count)))
 							elseif s.substring (1, p -1).same_string ("location") then
 								s.right_adjust
-								svn_repo.set_location (s.substring (p + 1, s.count))
-							elseif s.substring (1, p -1).same_string ("username") then
-								s.right_adjust
-								svn_repo.set_username (s.substring (p + 1, s.count))
-							elseif s.substring (1, p -1).same_string ("password") then
-								s.right_adjust
-								svn_repo.set_password (s.substring (p + 1, s.count))
+								repo.set_location (s.substring (p + 1, s.count))
 							elseif s.substring (1, p -1).same_string ("review") then
 								s.right_adjust
-								svn_repo.set_review_enabled (s.substring (p + 1, s.count).is_case_insensitive_equal ("on"))
+								repo.set_review_enabled (s.substring (p + 1, s.count).is_case_insensitive_equal ("on"))
+							elseif s.substring (1, p -1).same_string ("review.name") then
+								s.right_adjust
+								repo.set_review_name (s.substring (p + 1, s.count))
+							elseif s.substring (1, p -1).same_string ("review.url") then
+								s.right_adjust
+								repo.set_review_url (s.substring (p + 1, s.count))
+							elseif s.substring (1, p -1).same_string ("review.user") then
+								s.right_adjust
+								repo.set_review_username (s.substring (p + 1, s.count))
+							elseif s.substring (1, p -1).same_string ("review.password") then
+								s.right_adjust
+								repo.set_review_password (s.substring (p + 1, s.count))
+							elseif s.substring (1, p -1).same_string ("issue.url") then
+								s.right_adjust
+								repo.set_issue_url_pattern (s.substring (p + 1, s.count))
 							else
 								print ("???: " + s + "%N")
 							end
@@ -297,11 +331,11 @@ feature -- Storage
 						end
 					end
 				end
-				if svn_repo /= Void and then attached svn_repo.location as loc then
+				if repo /= Void and then attached repo.location as loc then
 					if n /= Void then
-						cat.add_repository (n, svn_repo)
+						cat.add_repository (n, repo)
 					else
-						cat.add_repository (loc, svn_repo)
+						cat.add_repository (loc, repo)
 					end
 				end
 				rf.close
@@ -324,7 +358,7 @@ feature -- Storage
 			n: STRING
 		do
 			if attached catalog as cat then
-				create rf.make ("catalog.ini")
+				create rf.make (catalog_ini_filename)
 				if not rf.exists or else rf.is_writable then
 					rf.create_read_write
 					across
@@ -335,19 +369,46 @@ feature -- Storage
 						rf.put_string ("[" + n + "]%N")
 						rf.put_string ("uuid=" + c.item.uuid.out + "%N")
 						rf.put_string ("location=" + c.item.location + "%N")
-						if attached c.item.username as l_username then
-							rf.put_string ("username=" + l_username + "%N")
-						end
-						if attached c.item.password as l_password then
-							rf.put_string ("password=" + l_password + "%N")
-						end
 						if c.item.review_enabled then
 							rf.put_string ("review=on%N")
+						end
+						if attached c.item.review_url as l_review_url then
+							rf.put_string ("review.url" + l_review_url + "%N")
+						end
+						if attached c.item.review_name as l_review_name then
+							rf.put_string ("review.name" + l_review_name + "%N")
+						end
+						if attached c.item.review_username as l_username then
+							rf.put_string ("review.username=" + l_username + "%N")
+						end
+						if attached c.item.review_password as l_password then
+							rf.put_string ("review.password=" + l_password + "%N")
+						end
+						if attached c.item.issue_url_pattern as l_issue_url_pattern then
+							rf.put_string ("issue.url=" + l_issue_url_pattern + "%N")
 						end
 					end
 					rf.close
 				end
 			end
+		end
+
+feature -- Configuration
+
+	edit_configuration
+		local
+			p: EV_POPUP_WINDOW
+			lab: EV_LABEL
+		do
+			create p.make_with_shadow
+			create lab.make_with_text ("Not Yet Implemented")
+			p.extend (lab)
+			p.set_size (200,50)
+			p.set_position ((x_position + width) // 2 + (p.width // 2), (y_position + height) // 2 + (p.height // 2))
+			lab.pointer_button_press_actions.force_extend (agent p.destroy)
+			lab.focus_out_actions.extend (agent p.destroy)
+			p.show_relative_to_window (Current)
+			lab.set_focus
 		end
 
 feature -- Check/Update/Refresh
@@ -544,7 +605,7 @@ feature {CTR_TOOL} -- Catalog
 						debug ("scm")
 							tt.append_string ("%Nstorage: " + rsvn.uuid.out + "%N")
 						end
-						if attached rsvn.username as l_username then
+						if attached rsvn.review_username as l_username then
 							tt.append_string ("%Nusername: " + l_username.out + "%N")
 						end
 						if rsvn.review_enabled then
@@ -733,6 +794,11 @@ feature {NONE} -- Implementation
 			create tbbut.make
 			tbbut.set_pixmap (icons.new_check_small_toolbar_button_icon)
 			tbbut.select_actions.extend (agent check_selected_repositories)
+			mtb.extend (tbbut)
+
+			create tbbut.make
+			tbbut.set_pixmap (icons.new_custom_text_small_toolbar_button_icon ("Config"))
+			tbbut.select_actions.extend (agent edit_configuration)
 			mtb.extend (tbbut)
 
 			mtb.compute_minimum_size

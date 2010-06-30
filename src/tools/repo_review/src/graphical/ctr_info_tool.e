@@ -33,6 +33,7 @@ feature {NONE} -- Initialization
 			g.set_column_count_to (2)
 			g.disable_row_height_fixed
 			g.enable_tree
+			g.hide_tree_node_connectors
 			g.hide_header
 			c.set_short_title ("Info ...")
 			c.set_long_title ("Info")
@@ -67,8 +68,9 @@ feature -- Element change
 			l_row, l_subrow: EV_GRID_ROW
 			glab: EV_GRID_LABEL_ITEM
 			grtxt: EV_GRID_RICH_LABEL_ITEM
-			gcb: EV_GRID_CHECKABLE_LABEL_ITEM
-			gtxt: EV_GRID_TEXT_ITEM
+--			gcb: EV_GRID_CHECKABLE_LABEL_ITEM
+--			gtxt: EV_GRID_TEXT_ITEM
+			md: like smart_log_message
 		do
 			g := grid
 			g.wipe_out
@@ -90,16 +92,49 @@ feature -- Element change
 				l_row := g.row (g.row_count)
 				create glab.make_with_text ("Message")
 				glab.align_text_top
+
 				l_row.set_item (1, glab)
-				create glab.make_with_text (rsvnlog.message)
+
+				md  := smart_log_message (rsvnlog)
+				create glab.make_with_text (md.message)
 				glab.set_foreground_color (info_highlight_fgcolor)
 				glab.set_font (message_font)
+				glab.align_text_top
+				glab.set_top_border (3)
+				glab.set_bottom_border (5)
+--				glab.pointer_double_press_actions.extend (agent )
+
 				l_row.set_item (2, glab)
 				if attached glab.font as ft then
-					l_row.set_height (ft.string_size (glab.text).height)
+					l_row.set_height (ft.string_size (glab.text).height + glab.bottom_border + glab.top_border)
+				end
+				if
+					attached md.issues as l_issues and then
+					attached rsvnlog.parent as repo
+				then
+					from
+						l_issues.start
+					until
+						l_issues.after
+					loop
+						if attached repo.issue_url (l_issues.item) as l_url then
+							g.insert_new_row_parented (g.row_count + 1, l_row)
+							l_subrow := g.row (g.row_count)
+							l_subrow.set_item (1, create {EV_GRID_ITEM})
+							create glab.make_with_text ("bug #" + l_issues.item + ": " + l_url)
+							glab.set_data (l_url)
+							glab.pointer_double_press_actions.force_extend (agent open_url (l_url))
+							l_subrow.set_item (2, glab)
+						end
+						l_issues.forth
+					end
+					if l_row.is_expandable then
+						l_row.expand
+					end
 				end
 
 				if attached rsvnlog.svn_revision.paths as l_changes and then l_changes.count > 0 then
+					g.insert_new_row (g.row_count + 1)
 					g.insert_new_row (g.row_count + 1)
 					l_row := g.row (g.row_count)
 					if l_changes.count = 1 then
@@ -126,6 +161,7 @@ feature -- Element change
 
 
 				g.insert_new_row (g.row_count + 1)
+				g.insert_new_row (g.row_count + 1)
 				l_row := g.row (g.row_count)
 				l_row.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Diff"))
 
@@ -139,39 +175,39 @@ feature -- Element change
 					l_row.set_item (2, glab)
 				end
 
-				if rsvnlog.parent.review_enabled then
-					g.insert_new_row (g.row_count + 1)
-					l_row := g.row (g.row_count)
-					l_row.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Review"))
-					l_row.set_item (2, create {EV_GRID_LABEL_ITEM}.make_with_text ("???"))
+--				if rsvnlog.parent.review_enabled then
+--					g.insert_new_row (g.row_count + 1)
+--					l_row := g.row (g.row_count)
+--					l_row.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Review"))
+--					l_row.set_item (2, create {EV_GRID_LABEL_ITEM}.make_with_text ("???"))
 
-					g.insert_new_row_parented (g.row_count + 1, l_row)
-					l_subrow := g.row (g.row_count)
-					l_subrow.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Accept"))
-					create gcb.make_with_text ("approve commit")
-					l_subrow.set_item (2, gcb)
+--					g.insert_new_row_parented (g.row_count + 1, l_row)
+--					l_subrow := g.row (g.row_count)
+--					l_subrow.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Accept"))
+--					create gcb.make_with_text ("approve commit")
+--					l_subrow.set_item (2, gcb)
 
-					g.insert_new_row_parented (g.row_count + 1, l_row)
-					l_subrow := g.row (g.row_count)
-					l_subrow.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Deny"))
-					create gcb.make_with_text ("disapprove commit")
-					l_subrow.set_item (2, gcb)
+--					g.insert_new_row_parented (g.row_count + 1, l_row)
+--					l_subrow := g.row (g.row_count)
+--					l_subrow.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Deny"))
+--					create gcb.make_with_text ("disapprove commit")
+--					l_subrow.set_item (2, gcb)
 
 
-					g.insert_new_row_parented (g.row_count + 1, l_row)
-					l_subrow := g.row (g.row_count)
-					l_subrow.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Note"))
-					create gtxt.make_with_text ("")
-					gtxt.enable_multiline_string
-					gtxt.enable_text_editing
-					gtxt.pointer_double_press_actions.force_extend (agent gtxt.activate)
-					l_subrow.set_item (2, gtxt)
+--					g.insert_new_row_parented (g.row_count + 1, l_row)
+--					l_subrow := g.row (g.row_count)
+--					l_subrow.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Note"))
+--					create gtxt.make_with_text ("")
+--					gtxt.enable_multiline_string
+--					gtxt.enable_text_editing
+--					gtxt.pointer_double_press_actions.force_extend (agent gtxt.activate)
+--					l_subrow.set_item (2, gtxt)
 
-					g.insert_new_row_parented (g.row_count + 1, l_row)
-					l_subrow := g.row (g.row_count)
-					l_subrow.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Reset"))
-					l_subrow.set_item (2, create {EV_GRID_LABEL_ITEM}.make_with_text ("Submit"))
-				end
+--					g.insert_new_row_parented (g.row_count + 1, l_row)
+--					l_subrow := g.row (g.row_count)
+--					l_subrow.set_item (1, create {EV_GRID_LABEL_ITEM}.make_with_text ("Reset"))
+--					l_subrow.set_item (2, create {EV_GRID_LABEL_ITEM}.make_with_text ("Submit"))
+--				end
 
 				g.column (1).resize_to_content
 				g.column (1).set_width (g.column (1).width + 5)
@@ -250,7 +286,101 @@ feature -- Element change
 			update
 		end
 
+feature {NONE} -- Smart log message
+
+	smart_log_message (a_log: REPOSITORY_LOG): TUPLE [message: STRING; issues: detachable LIST [STRING]]
+		local
+			mesg, m: STRING
+			s: STRING
+--			kmp: KMP_MATCHER
+			p, i, d, n, e: INTEGER
+			bugs: detachable ARRAYED_LIST [STRING]
+		do
+			if attached a_log.parent as repo and then repo.has_issue_url then
+				from
+					m := a_log.message
+					n := m.count
+					create mesg.make (n)
+					create bugs.make (1)
+					i := 1
+					p := 1
+				until
+					p > n
+				loop
+					i := m.substring_index ("bug", p)
+					if i > 0 then
+							--| skip space					
+						from
+							d := i + 3
+						until
+							d > n or else (m[d] = '#' or not m[d].is_space)
+						loop
+							d := d + 1
+						end
+						if m[d] = '#' then
+							--| Found "bug #"						
+
+							--| skip space
+							from
+								e := d + 1
+							until
+								e > n or else not m[e].is_space
+							loop
+								e := e + 1
+							end
+							--| get word
+							from
+								create s.make_empty
+							until
+								e > n or else not m[e].is_alpha_numeric
+							loop
+								s.extend (m[e])
+								e := e + 1
+							end
+							if s.is_integer then
+								mesg.append_string (m.substring (p, e))
+								bugs.force (s)
+	--							Result.append_string (m.substring (p, i - 1))
+	--							Result.append_string ("BUG["+s+"] ")
+								p := e + 1
+							else
+								mesg.append_string (m.substring (p, d))
+								p := d + 1
+							end
+						else
+							mesg.append_string (m.substring (p, i + 3))
+							p := i + 4
+						end
+					else
+						mesg.append_string (m.substring (p, n))
+						p := n + 1
+					end
+				end
+				if bugs.count = 0 then
+					bugs := Void
+				end
+			else
+				mesg := a_log.message
+			end
+			Result := [mesg, bugs]
+		end
+
 feature {NONE} -- Implementation
+
+	open_url (a_url: STRING)
+		local
+			exec: EXECUTION_ENVIRONMENT
+			s: STRING
+		do
+			s := a_url
+			if s /= Void then
+				create exec
+				if attached exec.get ("COMSPEC") as l_comspec then
+					s := l_comspec + " /C start " + s
+					exec.launch (s)
+				end
+			end
+		end
 
 	open_data_folder
 		local
@@ -281,10 +411,15 @@ feature {NONE} -- Implementation
 		end
 
 	show_info_diff
+		local
+			p: EV_POINTER_STYLE
 		do
 			if attached ctr_window as w then
 				if attached current_log as l_log then
+					p := w.pointer_style
+					w.set_pointer_style ((create {EV_STOCK_PIXMAPS}).busy_cursor)
 					w.show_log_diff (l_log)
+					w.set_pointer_style (p)
 				end
 			end
 		end

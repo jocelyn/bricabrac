@@ -110,7 +110,7 @@ feature -- Access
 
 	username: STRING
 		do
-			if attached repository.username as l_username then
+			if attached repository.review_username as l_username then
 				Result := l_username
 			else
 				Result := "anonymous"

@@ -167,8 +167,6 @@ feature -- Event
 		end
 
 	on_submit
-		local
-			e: like {REPOSITORY_LOG_REVIEW}.user_review
 		do
 			if
 				attached current_log as l_log and then
@@ -197,7 +195,7 @@ feature -- Basic operation
 				user_name.wipe_out
 				if
 					a_log /= Void and then
-					attached a_log.parent.username as u
+					attached a_log.parent.review_username as u
 				then
 					user_name.append_string (u)
 				end

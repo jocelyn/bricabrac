@@ -251,7 +251,7 @@ feature {NONE} -- Implementation
 			if attached a_repo.info as repo_info then
 				fetched_info := repo_info
 				if a_last_fetched_rev > 0 then
-					fetched_logs := a_repo.logs (True, a_last_fetched_rev, repo_info.last_changed_rev, 10)
+					fetched_logs := a_repo.logs (True, a_last_fetched_rev, repo_info.last_changed_rev, 0)
 				else
 					fetched_logs := a_repo.logs (True, 0, 0, 100)
 				end
