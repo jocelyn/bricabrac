@@ -411,15 +411,10 @@ feature {NONE} -- Implementation
 		end
 
 	show_info_diff
-		local
-			p: EV_POINTER_STYLE
 		do
 			if attached ctr_window as w then
 				if attached current_log as l_log then
-					p := w.pointer_style
-					w.set_pointer_style ((create {EV_STOCK_PIXMAPS}).busy_cursor)
 					w.show_log_diff (l_log)
-					w.set_pointer_style (p)
 				end
 			end
 		end

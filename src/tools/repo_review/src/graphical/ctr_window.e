@@ -707,8 +707,10 @@ feature {CTR_TOOL} -- Diff
 		do
 			rdata := a_log.parent
 			if not a_log.has_diff then
+				set_busy
 				rdata.fetch_diff (a_log)
 				rdata.get_diff (a_log)
+				unset_busy
 			end
 			if a_log.has_diff then
 				info_tool.update_current_log (a_log)
@@ -860,6 +862,23 @@ feature {CTR_TOOL} -- Tools
 
 	logs_tool: CTR_LOGS_TOOL
 	info_tool: CTR_INFO_TOOL
+
+	before_busy_pointer: detachable EV_POINTER_STYLE
+
+	set_busy
+		do
+			if before_busy_pointer = Void then
+				before_busy_pointer := pointer_style
+			end
+			set_pointer_style ((create {EV_STOCK_PIXMAPS}).Busy_cursor)
+		end
+
+	unset_busy
+		do
+			if attached before_busy_pointer as p then
+				set_pointer_style (p)
+			end
+		end
 
 feature {NONE} -- Implementation
 

@@ -66,9 +66,13 @@ feature {NONE} -- Initialization
 			tb.extend (tbb)
 			button_submit := tbb
 
-			create lab.make_with_text ("Review:")
+			create lab.make_with_text ("Review #")
 			b.extend (lab)
 			b.disable_item_expand (lab)
+			create log_id_lab.make_with_text ("...")
+			b.extend (log_id_lab)
+			b.disable_item_expand (log_id_lab)
+
 			b.extend (create {EV_CELL})
 			b.extend (tb)
 			b.disable_item_expand (tb)
@@ -90,6 +94,7 @@ feature -- Access
 
 
 	tool_bar: SD_TOOL_BAR
+	log_id_lab: EV_LABEL
 	button_approve: SD_TOOL_BAR_TOGGLE_BUTTON
 	button_refuse: SD_TOOL_BAR_TOGGLE_BUTTON
 	button_question: SD_TOOL_BAR_TOGGLE_BUTTON
@@ -201,6 +206,10 @@ feature -- Basic operation
 				end
 			end
 			current_log := a_log
+			if a_log /= Void then
+				log_id_lab.set_text (a_log.id)
+				log_id_lab.refresh_now
+			end
 			if a_log /= Void and then a_log.has_review then
 				r := a_log.review
 				if r /= Void then
