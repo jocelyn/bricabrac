@@ -29,6 +29,8 @@ feature -- Access
 
 	review_enabled: BOOLEAN
 
+	review_variables: detachable HASH_TABLE [STRING, STRING]
+
 	review_username: detachable STRING
 
 	review_password: detachable STRING
@@ -71,6 +73,33 @@ feature -- Element change
 			location_set: v ~ location
 		end
 
+	set_uuid (u: like uuid)
+		do
+			uuid := u
+		end
+
+	add_review_variable (v: STRING; k: STRING)
+		require
+			k_attached: k /= Void
+			k_lowered: k.same_string (k.as_lower)
+		local
+			l_vars: like review_variables
+		do
+			l_vars := review_variables
+			if l_vars = Void then
+				create l_vars.make (6)
+				review_variables := l_vars
+			end
+			l_vars.force (v, k)
+		end
+
+	set_review_variables (v: like review_variables)
+		require
+			v_attached: v /= Void
+		do
+			review_variables := v
+		end
+
 	set_review_enabled (v: like review_enabled)
 		do
 			review_enabled := v
@@ -83,6 +112,7 @@ feature -- Element change
 			v_attached: v /= Void
 		do
 			review_url := v
+			add_review_variable(v, "url")
 		ensure
 			review_url_set: v ~ review_url
 		end
@@ -92,13 +122,9 @@ feature -- Element change
 			v_attached: v /= Void
 		do
 			review_name := v
+			add_review_variable (v, "name")
 		ensure
 			review_name_set: v ~ review_name
-		end
-
-	set_uuid (u: like uuid)
-		do
-			uuid := u
 		end
 
 	set_review_username (v: like review_username)
@@ -106,6 +132,7 @@ feature -- Element change
 			v_attached: v /= Void
 		do
 			review_username := v
+			add_review_variable (v, "username")
 		ensure
 			username_set: v ~ review_username
 		end
@@ -115,6 +142,7 @@ feature -- Element change
 			v_attached: v /= Void
 		do
 			review_password := v
+			add_review_variable (v, "password")
 		ensure
 			password_set: v ~ review_password
 		end

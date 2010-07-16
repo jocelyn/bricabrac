@@ -47,10 +47,12 @@ feature -- Basic operation
 	user_login (a_user: STRING; a_password: STRING)
 		do
 			send ("user.login", <<a_user, a_password>>)
-			if attached last_answer as rep then
-				if attached {XRPC_STRUCT} rep.value as l_struct then
-					if attached {XRPC_STRING} l_struct.item ("sessid") as l_sessid_string then
-						session_id := l_sessid_string.value
+			if not last_answer_is_fault then
+				if attached last_answer as rep then
+					if attached {XRPC_STRUCT} rep.value as l_struct then
+						if attached {XRPC_STRING} l_struct.item ("sessid") as l_sessid_string then
+							session_id := l_sessid_string.value
+						end
 					end
 				end
 			end
@@ -84,8 +86,21 @@ feature -- Basic operation
 
 feature -- Query
 
---	last_answer: detachable XML_DOCUMENT
 	last_answer: detachable XRPC_RESPONSE
+
+	last_answer_is_fault: BOOLEAN
+		do
+			if attached {XRPC_FAULT_RESPONSE} last_answer then
+				Result := True
+			end
+		end
+
+	last_fault_response: detachable XRPC_FAULT_RESPONSE
+		do
+			if attached {XRPC_FAULT_RESPONSE} last_answer as f then
+				Result := f
+			end
+		end
 
 	last_answer_as_string: STRING
 		do
@@ -259,7 +274,6 @@ feature {NONE} -- Implementation
 			end
 			last_nonce_number := 1 + (last_nonce_number + 1 ) \\ l_chars.count
 			Result.append_character (l_chars.item (last_nonce_number))
-			print ("Nonce: " + Result + "%N")
 		end
 
 	last_nonce_number: INTEGER

@@ -54,13 +54,6 @@ feature -- Status report
 			Result := repository.review_enabled
 		end
 
-	review_client: detachable CTR_LOG_REVIEW_CLIENT_PROXY
-		require
-			review_enabled: review_enabled
-		do
-			create Result.make (repository)
-		end
-
 	has_issue_url: BOOLEAN
 		do
 			Result := repository.issue_url_pattern /= Void
@@ -169,7 +162,24 @@ feature -- Query
 			Result := repository.location
 		end
 
+feature {NONE} -- Implementation: Review
+
+	internal_review_client: detachable like review_client
+			-- Internal attribut for `review_client'
+
 feature -- Review
+
+	review_client: CTR_LOG_REVIEW_CLIENT_PROXY
+		require
+			review_enabled: review_enabled
+		do
+			if attached internal_review_client as rc then
+				Result := rc
+			else
+				create Result.make (repository)
+				internal_review_client := Result
+			end
+		end
 
 	review_exists (a_log: REPOSITORY_LOG): BOOLEAN
 		local

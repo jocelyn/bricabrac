@@ -181,7 +181,7 @@ feature -- Event
 				if attached l_log.parent.review_client as l_client then
 					l_client.submit (l_log, l_review)
 					if l_client.last_error_occurred then
-						print (l_client.last_error_message + "%N")
+						print (l_client.last_error_to_string + "%N")
 					end
 				end
 				apply (l_log, l_review)

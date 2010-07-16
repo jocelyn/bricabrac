@@ -253,6 +253,7 @@ feature -- Storage
 			n,k: detachable STRING
 			p,i: INTEGER
 			s: STRING
+			s2: STRING
 		do
 			create rf.make (catalog_ini_filename)
 			if rf.exists then
@@ -305,21 +306,31 @@ feature -- Storage
 							elseif s.substring (1, p -1).same_string ("location") then
 								s.right_adjust
 								repo.set_location (s.substring (p + 1, s.count))
-							elseif s.substring (1, p -1).same_string ("review") then
-								s.right_adjust
-								repo.set_review_enabled (s.substring (p + 1, s.count).is_case_insensitive_equal ("on"))
-							elseif s.substring (1, p -1).same_string ("review.name") then
-								s.right_adjust
-								repo.set_review_name (s.substring (p + 1, s.count))
-							elseif s.substring (1, p -1).same_string ("review.url") then
-								s.right_adjust
-								repo.set_review_url (s.substring (p + 1, s.count))
-							elseif s.substring (1, p -1).same_string ("review.user") then
-								s.right_adjust
-								repo.set_review_username (s.substring (p + 1, s.count))
-							elseif s.substring (1, p -1).same_string ("review.password") then
-								s.right_adjust
-								repo.set_review_password (s.substring (p + 1, s.count))
+							elseif s.substring (1, 6).same_string ("review") then
+								s2 := s.substring (7, p - 1)
+								s2.to_lower
+								if s2.is_empty then
+									s.right_adjust
+									repo.set_review_enabled (s.substring (p + 1, s.count).is_case_insensitive_equal ("on"))
+								elseif s2.item (1) = '.' then
+									s2.remove_head (1)
+									if s2.same_string ("name") then
+										s.right_adjust
+										repo.set_review_name (s.substring (p + 1, s.count))
+									elseif s2.same_string ("url") then
+										s.right_adjust
+										repo.set_review_url (s.substring (p + 1, s.count))
+									elseif s2.same_string ("user") then
+										s.right_adjust
+										repo.set_review_username (s.substring (p + 1, s.count))
+									elseif s2.same_string ("password") then
+										s.right_adjust
+										repo.set_review_password (s.substring (p + 1, s.count))
+									else
+										s.right_adjust
+										repo.add_review_variable (s.substring (p + 1, s.count), s2)
+									end
+								end
 							elseif s.substring (1, p -1).same_string ("issue.url") then
 								s.right_adjust
 								repo.set_issue_url_pattern (s.substring (p + 1, s.count))
@@ -387,6 +398,7 @@ feature -- Storage
 						if attached c.item.issue_url_pattern as l_issue_url_pattern then
 							rf.put_string ("issue.url=" + l_issue_url_pattern + "%N")
 						end
+						rf.put_new_line
 					end
 					rf.close
 				end
