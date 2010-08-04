@@ -57,6 +57,11 @@ feature -- Element change
 			parent.mark_log_read (id)
 		end
 
+	mark_unread
+		do
+			parent.mark_log_unread (id)
+		end
+
 	delete
 		do
 			mark_read

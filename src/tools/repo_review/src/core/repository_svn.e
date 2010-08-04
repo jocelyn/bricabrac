@@ -44,6 +44,8 @@ feature {NONE} -- Initialization
 
 feature -- Access
 
+	kind: STRING = "svn"
+
 	location: STRING
 
 	info: detachable SVN_REPOSITORY_INFO

@@ -47,4 +47,9 @@ feature -- Status report
 			end
 		end
 
+	to_string: STRING
+		do
+			Result := "path=" + path
+		end
+		
 end

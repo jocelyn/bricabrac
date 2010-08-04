@@ -13,4 +13,8 @@ feature -- Access
 		deferred
 		end
 
+	to_string: STRING
+		deferred
+		end
+
 end

@@ -110,8 +110,8 @@ feature {NONE} -- Events
 	on_first_shown
 		do
 			load_catalog_from_ini
-			if False then
-				save_catalog_as_ini
+			if True then
+				save_catalog_as_ini (".bak")
 			end
 			update_catalog
 --			check_all_repositories
@@ -151,6 +151,7 @@ feature -- Layout
 				b := dm.save_data (docking_layout_filename)
 --				b := dm.save_editors_data (docking_layout_editors_filename)
 --				b := dm.save_tools_data (docking_layout_tools_filename)
+
 			end
 		end
 
@@ -252,8 +253,8 @@ feature -- Storage
 			repo: detachable REPOSITORY
 			n,k: detachable STRING
 			p,i: INTEGER
-			s: STRING
-			s2: STRING
+			s,s2,s3: STRING
+			v: STRING
 		do
 			create rf.make (catalog_ini_filename)
 			if rf.exists then
@@ -300,40 +301,90 @@ feature -- Storage
 							end
 						elseif repo /= Void then
 							p := s.index_of ('=', 1)
+							v := s.substring (p + 1, s.count)
 							if s.substring (1, p -1).same_string ("uuid") then
-								s.right_adjust
-								repo.set_uuid (create {UUID}.make_from_string (s.substring (p + 1, s.count)))
+								v.left_adjust; v.right_adjust
+								repo.set_uuid (create {UUID}.make_from_string (v))
 							elseif s.substring (1, p -1).same_string ("location") then
-								s.right_adjust
-								repo.set_location (s.substring (p + 1, s.count))
+								v.left_adjust; v.right_adjust
+								repo.set_location (v)
 							elseif s.substring (1, 6).same_string ("review") then
 								s2 := s.substring (7, p - 1)
 								s2.to_lower
 								if s2.is_empty then
-									s.right_adjust
-									repo.set_review_enabled (s.substring (p + 1, s.count).is_case_insensitive_equal ("on"))
+									v.left_adjust; v.right_adjust
+									repo.set_review_enabled (v.is_case_insensitive_equal ("on"))
 								elseif s2.item (1) = '.' then
 									s2.remove_head (1)
-									if s2.same_string ("name") then
-										s.right_adjust
-										repo.set_review_name (s.substring (p + 1, s.count))
-									elseif s2.same_string ("url") then
-										s.right_adjust
-										repo.set_review_url (s.substring (p + 1, s.count))
-									elseif s2.same_string ("user") then
-										s.right_adjust
-										repo.set_review_username (s.substring (p + 1, s.count))
-									elseif s2.same_string ("password") then
-										s.right_adjust
-										repo.set_review_password (s.substring (p + 1, s.count))
-									else
-										s.right_adjust
-										repo.add_review_variable (s.substring (p + 1, s.count), s2)
+									s2.left_adjust; s2.right_adjust
+									s2.to_lower
+									v.left_adjust; v.right_adjust
+									repo.add_review_variable (v, s2)
+								end
+							elseif s.substring (1, 6).same_string ("tokens") then
+								s2 := s.substring (7, p - 1)
+								s2.to_lower
+								if s2.is_empty then
+								elseif s2.item (1) = '.' then
+									s2.remove_head (1)
+									p := s2.index_of ('.', 1)
+									if p > 0 then
+										k := s2.substring (1, p - 1).as_lower
+										s3 := s2.substring (p + 1, s2.count).as_lower
+										if s3.same_string ("key") then
+											v.left_adjust; v.right_adjust
+											repo.add_token (k, v, Void)
+										elseif s3.same_string ("url") then
+											v.left_adjust; v.right_adjust
+											repo.add_token (k, Void, v)
+										end
 									end
 								end
-							elseif s.substring (1, p -1).same_string ("issue.url") then
-								s.right_adjust
-								repo.set_issue_url_pattern (s.substring (p + 1, s.count))
+							elseif s.substring (1, 7).same_string ("filters") then
+								s2 := s.substring (8, p - 1)
+								s2.to_lower
+								if s2.is_empty then
+								elseif s2.item (1) = '.' then
+									s2.remove_head (1)
+									p := s2.last_index_of ('.', s2.count)
+									if p = 0 then
+										k := s2
+										v.left_adjust; v.right_adjust
+										s3 := ""
+									else
+										k := s2.substring (1, p - 1)
+										s3 := s2.substring (p + 1, s2.count).as_lower
+									end
+									if s3.is_empty then
+										repo.add_filter (k, v)
+									else
+										if s3.same_string ("author") then
+											if repo.filter (k) = Void then
+												repo.add_filter (k, k)
+											end
+											v.left_adjust; v.right_adjust
+											repo.add_filter_to (k, create {REPOSITORY_LOG_AUTHOR_FILTER}.make (v))
+										elseif s3.same_string ("path") then
+											if repo.filter (k) = Void then
+												repo.add_filter (k, k)
+											end
+											v.left_adjust; v.right_adjust
+											repo.add_filter_to (k, create {REPOSITORY_LOG_PATH_FILTER}.make (v))
+										elseif s3.same_string ("message") then
+											if repo.filter (k) = Void then
+												repo.add_filter (k, k)
+											end
+--											v.left_adjust; v.right_adjust
+
+											repo.add_filter_to (k, create {REPOSITORY_LOG_MESSAGE_FILTER}.make (v))
+										else
+											k := s2
+											if repo.filter (k) = Void then
+												repo.add_filter (k, v)
+											end
+										end
+									end
+								end
 							else
 								print ("???: " + s + "%N")
 							end
@@ -363,40 +414,56 @@ feature -- Storage
 			catalog := cat
 		end
 
-	save_catalog_as_ini
+	save_catalog_as_ini (a_extra: detachable STRING)
 		local
 			rf: RAW_FILE
 			n: STRING
+			t: STRING
 		do
 			if attached catalog as cat then
-				create rf.make (catalog_ini_filename)
+				if a_extra /= Void then
+					create rf.make (catalog_ini_filename + a_extra)
+				else
+					create rf.make (catalog_ini_filename)
+				end
 				if not rf.exists or else rf.is_writable then
 					rf.create_read_write
 					across
 						cat.repositories as c
 					loop
 						n := c.key.string
+						t := c.item.kind
 						n.replace_substring_all ("]", " ")
-						rf.put_string ("[" + n + "]%N")
+						rf.put_string ("[" + t + ":" + n + "]%N")
 						rf.put_string ("uuid=" + c.item.uuid.out + "%N")
 						rf.put_string ("location=" + c.item.location + "%N")
 						if c.item.review_enabled then
 							rf.put_string ("review=on%N")
 						end
-						if attached c.item.review_url as l_review_url then
-							rf.put_string ("review.url" + l_review_url + "%N")
+						if attached c.item.review_variables as l_rev_vars then
+							across
+								l_rev_vars as rvc
+							loop
+								rf.put_string ("review." + rvc.key + "=" + rvc.item + "%N")
+							end
 						end
-						if attached c.item.review_name as l_review_name then
-							rf.put_string ("review.name" + l_review_name + "%N")
+						if attached c.item.tokens as l_tokens then
+							across
+								l_tokens as tok
+							loop
+								rf.put_string ("tokens." + tok.key + ".key=" + tok.item.key + "%N")
+								rf.put_string ("tokens." + tok.key + ".url=" + tok.item.url_pattern + "%N")
+							end
 						end
-						if attached c.item.review_username as l_username then
-							rf.put_string ("review.username=" + l_username + "%N")
-						end
-						if attached c.item.review_password as l_password then
-							rf.put_string ("review.password=" + l_password + "%N")
-						end
-						if attached c.item.issue_url_pattern as l_issue_url_pattern then
-							rf.put_string ("issue.url=" + l_issue_url_pattern + "%N")
+						if attached c.item.filters as l_filters then
+							across
+								l_filters as flt
+							loop
+								if not flt.key.same_string (flt.item.name) then
+									rf.put_string ("filters." + flt.key + "=" + flt.item.name + "%N")
+								end
+								rf.put_string (filter_to_ini_line (flt.key, flt.item.filter))
+							end
 						end
 						rf.put_new_line
 					end
@@ -405,9 +472,114 @@ feature -- Storage
 			end
 		end
 
+	filter_to_ini_line (k: STRING; f: detachable REPOSITORY_LOG_FILTER): STRING
+		do
+			if f = Void then
+				create Result.make_empty
+			elseif attached {REPOSITORY_LOG_GROUP_FILTER} f as fg then
+				create Result.make_empty
+				across
+					fg.filters as fi
+				loop
+					Result.append_string (filter_to_ini_line (k, fi.item))
+				end
+			else
+				Result := "filters." + k
+				if attached {REPOSITORY_LOG_AUTHOR_FILTER} f as fauth then
+					Result.append_string (".author=")
+					Result.append_string (fauth.author)
+				elseif attached {REPOSITORY_LOG_PATH_FILTER} f as fpath then
+					Result.append_string (".path=")
+					Result.append_string (fpath.path)
+				elseif attached {REPOSITORY_LOG_MESSAGE_FILTER} f as fmsg then
+					Result.append_string (".message=")
+					Result.append_string (fmsg.message)
+				else
+				end
+				Result.append_character ('%N')
+			end
+		end
+
 feature -- Configuration
 
 	edit_configuration
+		local
+			dlg: EV_TITLED_WINDOW
+			but: EV_BUTTON
+			m: EV_VERTICAL_BOX
+			t: EV_TEXT
+			s: detachable STRING
+			pf: RAW_FILE
+		do
+			create pf.make (catalog_ini_filename)
+			if pf.exists and then pf.is_readable then
+				pf.open_read
+				from
+					create s.make (pf.count)
+				until
+					pf.exhausted
+				loop
+					pf.read_stream (512)
+					s.append_string (pf.last_string)
+				end
+				pf.close
+			end
+
+			create dlg
+			create m
+			create t
+			create but.make_with_text_and_action ("Save", agent (a_dlg: EV_WINDOW; a_text: EV_TEXT)
+					local
+						i_txt: STRING
+						i_pf: PLAIN_TEXT_FILE
+					do
+						i_txt := a_text.text.as_string_8
+						create i_pf.make (catalog_ini_filename)
+						if not i_pf.exists or else i_pf.is_writable then
+							i_pf.create_read_write
+							i_pf.put_string (i_txt)
+							i_pf.close
+						end
+						a_dlg.destroy
+					end (dlg, t)
+				)
+
+			dlg.extend (m)
+			m.extend (t)
+			m.extend (but)
+			m.disable_item_expand (but)
+
+--			create but.make_with_text_and_action ("Cancel", agent dlg.destroy)
+--			m.extend (but)
+--			m.disable_item_expand (but)
+
+			if s = Void then
+				s := "[
+[svn:EiffelStudio/trunk]
+uuid=96DACE30-64DB-4AF8-8A70-4828382E83B3
+location=https://svn.eiffel.com/eiffelstudio/trunk
+review=on
+review.user=your_login
+review.password=your_password
+review.domain=community.ise
+review.apikey=d0e8536407db776b80225d7d3c1750a2
+review.endpoint=/ctr/services/xmlrpc
+tokens.issue.key=bug
+tokens.issue.url=https://www2.eiffel.com/support/protected/report.aspx?pr=$$
+tokens.test.key=test
+tokens.test.url=http://svn.origo.ethz.ch/viewvc/eiffelstudio/trunk/eweasel/tests/$$/tcf?view=markup
+					]"
+			end
+			t.set_text (s)
+			dlg.close_request_actions.extend (agent dlg.destroy)
+			dlg.set_position (x_position, y_position)
+			dlg.set_size (width, height)
+			dlg.enable_border
+			dlg.enable_user_resize
+			dlg.show_relative_to_window (Current)
+		end
+
+	not_yet_implemented
 		local
 			p: EV_POPUP_WINDOW
 			lab: EV_LABEL
@@ -429,6 +601,7 @@ feature -- Check/Update/Refresh
 		local
 			g: like catalog_grid
 			l_rows: LIST [EV_GRID_ROW]
+			r: EV_GRID_ROW
 		do
 			g := catalog_grid
 			l_rows := g.selected_rows
@@ -436,7 +609,11 @@ feature -- Check/Update/Refresh
 				across
 					l_rows as c
 				loop
-					if attached {REPOSITORY_DATA} c.item.data as d then
+					r := c.item
+					if attached r.parent_row_root as pr then
+						r := pr
+					end
+					if attached {REPOSITORY_DATA} r.data as d then
 						check_repository (d)
 					end
 				end
@@ -596,9 +773,15 @@ feature {CTR_TOOL} -- Catalog
 	update_catalog
 		local
 			g: like catalog_grid
+			repo: REPOSITORY
+			repo_data: detachable REPOSITORY_DATA
+
 			cat: like catalog
 			glab: EV_GRID_LABEL_ITEM
-			tt: STRING
+			l_row, l_subrow: detachable EV_GRID_ROW
+			tt,k,kp: STRING
+			p: INTEGER
+			l_filter_rows: HASH_TABLE [EV_GRID_ROW, STRING]
 		do
 			g := catalog_grid
 			g.wipe_out
@@ -609,25 +792,84 @@ feature {CTR_TOOL} -- Catalog
 					cat.repositories as c
 				loop
 					g.insert_new_row (g.row_count + 1)
+					l_row := g.row (g.row_count)
+
 					create glab.make_with_text (c.key)
 					glab.set_data (c.key.string)
-					g.set_item (cst_repo_name_column, g.row_count, glab)
-					if attached {REPOSITORY_SVN} c.item as rsvn then
-						tt := "location: " + rsvn.location
-						debug ("scm")
-							tt.append_string ("%Nstorage: " + rsvn.uuid.out + "%N")
-						end
-						if attached rsvn.review_username as l_username then
-							tt.append_string ("%Nusername: " + l_username.out + "%N")
-						end
-						if rsvn.review_enabled then
-							tt.append_string ("%NReview enabled%N")
-						end
-						glab.set_tooltip (tt)
+					l_row.set_item (cst_repo_name_column, glab)
 
-						create glab.make_with_text (rsvn.location)
-						g.set_item (cst_repo_uuid_column, g.row_count, glab)
-						g.row (g.row_count).set_data (create {REPOSITORY_SVN_DATA}.make (rsvn.uuid, rsvn))
+					repo := c.item
+					create tt.make_empty
+					debug ("scm")
+						tt.append_string ("%Nstorage: " + repo.uuid.out + "%N")
+					end
+
+					if attached {REPOSITORY_SVN} repo as rsvn then
+						create {REPOSITORY_SVN_DATA} repo_data.make (repo.uuid, rsvn)
+						l_row.set_data (repo_data)
+					else
+						repo_data := Void
+					end
+
+					tt.append_string ("Location: " + repo.Location + "%N")
+					if attached repo.review_username as l_username then
+						tt.append_string ("%Nusername: " + l_username.out + "%N")
+					end
+					if repo.review_enabled then
+						tt.append_string ("%NReview enabled%N")
+					end
+					glab.set_tooltip (tt)
+
+					create glab.make_with_text (repo.Location)
+					l_row.set_item (cst_repo_uuid_column, glab)
+
+					if attached repo.filters as l_filters and then l_filters.count > 0 then
+						create l_filter_rows.make (l_filters.count)
+						across
+							l_filters as fcursor
+						loop
+							k := fcursor.key
+							l_subrow := Void
+							if l_filter_rows.has_key (k) then
+								l_subrow := l_filter_rows.found_item
+							else
+								if k.has ('.') then
+									p := k.last_index_of ('.', k.count)
+									if p > 0 then
+										kp := k.substring (1, p - 1)
+										if l_filter_rows.has_key (kp) then
+											if attached l_filter_rows.found_item as p_row then
+												p_row.insert_subrow (p_row.subrow_count + 1)
+												l_subrow := p_row.subrow (p_row.subrow_count)
+											end
+										end
+									else
+										check has_dot: False end
+									end
+								end
+							end
+
+							if l_subrow = Void then
+								l_row.insert_subrow (l_row.subrow_count + 1)
+								l_subrow := l_row.subrow (l_row.subrow_count)
+							end
+
+							l_filter_rows.force (l_subrow, k)
+
+							create glab.make_with_text (fcursor.item.name)
+							glab.set_tooltip (k)
+							glab.set_data (fcursor.item.name)
+
+							l_subrow.set_item (1, glab)
+							if attached fcursor.item.filter as f then
+								create glab.make_with_text ("Filter: " + f.to_string)
+								l_subrow.set_item (2, glab)
+							end
+							l_subrow.set_data (fcursor.item.filter)
+						end
+					end
+					if repo_data /= Void and then repo_data.unread_log_count > 0 then
+						update_catalog_row (l_row)
 					end
 				end
 			end
@@ -677,6 +919,40 @@ feature {CTR_TOOL} -- Catalog
 						end
 					end
 				end
+				update_catalog_filter_row (a_row, rdata)
+			end
+		end
+
+	update_catalog_filter_row (a_row: EV_GRID_ROW; a_data: REPOSITORY_DATA)
+		local
+			i, n: INTEGER
+		do
+			if attached {REPOSITORY_LOG_FILTER} a_row.data as rfilter then
+				if a_row.count > 0 then
+					if attached {EV_GRID_LABEL_ITEM} a_row.item (1) as glab then
+						if attached {STRING_GENERAL} glab.data as l_name then
+							n := a_data.unread_log_count_for (rfilter)
+							if n > 0 then
+								glab.set_text (l_name.to_string_8 + " (" + n.out + ")")
+								mark_repository_unread (a_row)
+							else
+								glab.set_text (l_name)
+								mark_repository_read (a_row)
+							end
+							update_catalog_layout
+						end
+					end
+				end
+			end
+			if a_row.subrow_count > 0 then
+				from
+					i := 1
+				until
+					i > a_row.subrow_count
+				loop
+					update_catalog_filter_row (a_row.subrow (i), a_data)
+					i := i + 1
+				end
 			end
 		end
 
@@ -685,27 +961,52 @@ feature {CTR_TOOL} -- Catalog
 		end
 
 	on_catalog_row_selected	(r: EV_GRID_ROW)
+		do
+			if catalog_grid.selected_rows.count <= 1 then
+				if attached {REPOSITORY_LOG_FILTER} r.data as rfilter then
+					if
+						attached r.parent_row_root as l_row and then
+						attached {REPOSITORY_DATA} l_row.data as rdata
+					then
+						select_repository (r, rdata, rfilter)
+					end
+				elseif attached {REPOSITORY_DATA} r.data as rdata then
+					select_repository (r, rdata, Void)
+				end
+			else
+
+			end
+		end
+
+	select_repository (r: EV_GRID_ROW; a_repodata: REPOSITORY_DATA; a_log_filter: detachable REPOSITORY_LOG_FILTER)
 		local
 			l_repo: detachable REPOSITORY_DATA
 		do
-			if catalog_grid.selected_rows.count <= 1 then
-				if attached {REPOSITORY_SVN_DATA} r.data as rsvndata then
-					l_repo := logs_tool.current_repository
-					if l_repo /= rsvndata then
-						logs_tool.reset
-						if attached catalog_repository_row (l_repo) as l_row then
-							mark_repository_unselected (l_row)
-						end
-						rsvndata.load_logs
-						logs_tool.update_current_repository (rsvndata)
-						info_tool.update_current_repository (rsvndata)
-						mark_repository_selected (r)
-						check catalog_repository_row (rsvndata) = r end
-						if not rsvndata.is_asynchronious_fetching then
-							unset_background_color (r)
-						end
-					end
+			l_repo := logs_tool.current_repository
+			if attached catalog_repository_row (l_repo) as l_row then
+				mark_repository_unselected (l_row)
+			end
+			if l_repo /= a_repodata then
+				if l_repo /= Void then
+					l_repo.save_unread_logs
 				end
+				logs_tool.reset
+				a_repodata.load_logs
+				logs_tool.update_current_repository (a_repodata, a_log_filter)
+				info_tool.update_current_repository (a_repodata)
+			else
+				logs_tool.update_current_repository (a_repodata, a_log_filter)
+			end
+			mark_repository_selected (r)
+			check
+				catalog_repository_row (a_repodata) = r or
+				catalog_repository_row (a_repodata) = r.parent_row_root
+			end
+			if
+				attached {REPOSITORY_SVN_DATA} a_repodata as rsvndata  and then
+				not rsvndata.is_asynchronious_fetching
+			then
+				unset_background_color (r)
 			end
 		end
 
@@ -803,6 +1104,7 @@ feature {NONE} -- Implementation
 
 				--| Repositories
 			g := catalog_grid
+			g.enable_tree
 			cat_c := catalog_content
 			create mtb.make
 			create tbbut.make
@@ -950,10 +1252,22 @@ feature {NONE} -- Implementation / Constants
 		end
 
 	mark_repository_unselected (r: EV_GRID_ROW)
+		local
+			i: INTEGER
 		do
 			if r.count > 0 and then attached {EV_GRID_LABEL_ITEM} r.item (cst_repo_name_column) as glab then
 				glab.remove_pixmap
 				glab.set_font (font_default)
+				if r.subrow_count > 0 then
+					from
+						i := 1
+					until
+						i > r.subrow_count
+					loop
+						mark_repository_unselected (r.subrow (i))
+						i := i + 1
+					end
+				end
 			end
 		end
 

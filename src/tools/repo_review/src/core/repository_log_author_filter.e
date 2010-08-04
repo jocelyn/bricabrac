@@ -31,4 +31,9 @@ feature -- Status report
 			Result := author.is_case_insensitive_equal (a_log.author)
 		end
 
+	to_string: STRING
+		do
+			Result := "author=" + author
+		end
+
 end

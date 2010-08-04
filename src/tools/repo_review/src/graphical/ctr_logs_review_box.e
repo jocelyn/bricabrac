@@ -167,7 +167,7 @@ feature -- Event
 	apply (a_log: REPOSITORY_LOG; r: REPOSITORY_LOG_REVIEW)
 		do
 			a_log.parent.store_log_review (a_log, r)
-			update_current_log (current_log)
+--			update_current_log (current_log)
 			logs_tool.update_log (a_log)
 		end
 
@@ -194,7 +194,7 @@ feature -- Basic operation
 		local
 			l_rdata: detachable like {REPOSITORY_LOG_REVIEW}.user_review
 			r: detachable REPOSITORY_LOG_REVIEW
-			l_state: INTEGER --| 0: no user review; 1: local user review; 2: remote user review
+			l_state: INTEGER --| -1: disabled 0: no user review; 1: local user review; 2: remote user review
 		do
 			if current_log /= a_log then
 				user_name.wipe_out
@@ -209,6 +209,9 @@ feature -- Basic operation
 			if a_log /= Void then
 				log_id_lab.set_text (a_log.id)
 				log_id_lab.refresh_now
+			else
+				log_id_lab.set_text ("...")
+				log_id_lab.refresh_now
 			end
 			if a_log /= Void and then a_log.has_review then
 				r := a_log.review
@@ -216,46 +219,54 @@ feature -- Basic operation
 					l_rdata := r.user_review (user_name, Void)
 				end
 			end
-			if r = Void or l_rdata = Void then
-				button_approve.disable_select
-				button_refuse.disable_select
-				button_question.disable_select
-				button_submit.disable_sensitive
+			if a_log = Void then
+				l_state := -1
+				widget.disable_sensitive
 			else
-				l_state := 1
-				if l_rdata.is_approved_status then
-					button_approve.enable_select
-				else
+				widget.enable_sensitive
+				if r = Void or l_rdata = Void then
 					button_approve.disable_select
-				end
-				if l_rdata.is_refused_status then
-					button_refuse.enable_select
-				else
 					button_refuse.disable_select
-				end
-				if l_rdata.is_question_status then
-					button_question.enable_select
-				else
 					button_question.disable_select
-				end
-				if not l_rdata.is_remote then
-					button_submit.enable_sensitive
-				else
-					l_state := 2
 					button_submit.disable_sensitive
+				else
+					l_state := 1
+					if l_rdata.is_approved_status then
+						button_approve.enable_select
+					else
+						button_approve.disable_select
+					end
+					if l_rdata.is_refused_status then
+						button_refuse.enable_select
+					else
+						button_refuse.disable_select
+					end
+					if l_rdata.is_question_status then
+						button_question.enable_select
+					else
+						button_question.disable_select
+					end
+					if not l_rdata.is_remote then
+						button_submit.enable_sensitive
+					else
+						l_state := 2
+						button_submit.disable_sensitive
+					end
 				end
 			end
 			inspect l_state
+			when -1 then
+				widget.set_background_color (colors.grey) -- disabled			
 			when 1 then
 				widget.set_background_color (colors.cyan) -- local			
 			when 2 then
 				widget.set_background_color (colors.white)	-- remote			
 			else
-				widget.set_background_color (colors.yellow)
+				widget.set_background_color (colors.yellow) -- unknown
 			end
 			widget.propagate_background_color
-			tool_bar.hide
-			tool_bar.show
+--			tool_bar.hide
+--			tool_bar.show
 		end
 
 	reset

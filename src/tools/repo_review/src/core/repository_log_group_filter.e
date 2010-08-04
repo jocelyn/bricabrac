@@ -28,7 +28,7 @@ feature -- Element changes
 
 	add_filter (f: REPOSITORY_LOG_FILTER)
 		do
-			filters.extend (f)
+			filters.force (f)
 		end
 
 feature -- Status report
@@ -44,6 +44,24 @@ feature -- Status report
 				Result := filters.item.matched (a_log)
 				filters.forth
 			end
+		end
+
+	to_string: STRING
+		local
+			n: INTEGER
+		do
+			Result := "("
+			n := filters.count
+			across
+				filters as c
+			loop
+				n := n - 1
+				Result.append_string (c.item.to_string)
+				if n > 0 then
+					Result.append_string (" + ")
+				end
+			end
+			Result.append_string (")")
 		end
 
 end

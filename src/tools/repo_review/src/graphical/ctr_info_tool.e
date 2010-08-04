@@ -71,6 +71,7 @@ feature -- Element change
 --			gcb: EV_GRID_CHECKABLE_LABEL_ITEM
 --			gtxt: EV_GRID_TEXT_ITEM
 			md: like smart_log_message
+			repo: REPOSITORY_DATA
 		do
 			g := grid
 			g.wipe_out
@@ -94,8 +95,9 @@ feature -- Element change
 				glab.align_text_top
 
 				l_row.set_item (1, glab)
+				repo := rsvnlog.parent
 
-				md  := smart_log_message (rsvnlog)
+				md  := smart_log_message (rsvnlog, repo.tokens_keys)
 				create glab.make_with_text (md.message)
 				glab.set_foreground_color (info_highlight_fgcolor)
 				glab.set_font (message_font)
@@ -103,35 +105,114 @@ feature -- Element change
 				glab.set_top_border (3)
 				glab.set_bottom_border (5)
 --				glab.pointer_double_press_actions.extend (agent )
-
 				l_row.set_item (2, glab)
 				if attached glab.font as ft then
 					l_row.set_height (ft.string_size (glab.text).height + glab.bottom_border + glab.top_border)
 				end
-				if
-					attached md.issues as l_issues and then
-					attached rsvnlog.parent as repo
-				then
-					from
-						l_issues.start
-					until
-						l_issues.after
+
+--				if
+--					repo.has_issue_url and then
+--					attached md.matches.item ("bug") as l_issues
+--				then
+--					from
+--						l_issues.start
+--					until
+--						l_issues.after
+--					loop
+--						if attached repo.issue_url (l_issues.item) as l_url then
+--							g.insert_new_row_parented (g.row_count + 1, l_row)
+--							l_subrow := g.row (g.row_count)
+--							l_subrow.set_item (1, create {EV_GRID_ITEM})
+--							create glab.make_with_text ("bug #" + l_issues.item + ": " + l_url)
+--							glab.set_data (l_url)
+--							glab.pointer_double_press_actions.force_extend (agent open_url (l_url))
+--							l_subrow.set_item (2, glab)
+--						end
+--						l_issues.forth
+--					end
+--					if l_row.is_expandable then
+--						l_row.expand
+--					end
+--				end
+
+				if attached repo.tokens as l_tokens and then l_tokens.count > 0 then
+					across
+						l_tokens as tok
 					loop
-						if attached repo.issue_url (l_issues.item) as l_url then
-							g.insert_new_row_parented (g.row_count + 1, l_row)
-							l_subrow := g.row (g.row_count)
-							l_subrow.set_item (1, create {EV_GRID_ITEM})
-							create glab.make_with_text ("bug #" + l_issues.item + ": " + l_url)
-							glab.set_data (l_url)
-							glab.pointer_double_press_actions.force_extend (agent open_url (l_url))
-							l_subrow.set_item (2, glab)
+						if attached md.matches.item (tok.item.key) as lst then
+							from
+								lst.start
+							until
+								lst.after
+							loop
+								if attached repo.token_url (tok.key, lst.item) as l_url then
+									g.insert_new_row_parented (g.row_count + 1, l_row)
+									l_subrow := g.row (g.row_count)
+									l_subrow.set_item (1, create {EV_GRID_ITEM})
+									create glab.make_with_text (tok.item.key + " #" + lst.item + ": " + l_url)
+									glab.set_data (l_url)
+									glab.pointer_double_press_actions.force_extend (agent open_url (l_url))
+									l_subrow.set_item (2, glab)
+								end
+								lst.forth
+							end
+							if l_row.is_expandable then
+								l_row.expand
+							end
 						end
-						l_issues.forth
-					end
-					if l_row.is_expandable then
-						l_row.expand
 					end
 				end
+
+--				if
+----					attached rsvnlog.parent as repo and then
+--					repo.has_test_url and then
+--					attached md.matches.item ("test") as l_tests
+--				then
+--					from
+--						l_tests.start
+--					until
+--						l_tests.after
+--					loop
+--						if attached repo.test_url (l_tests.item) as l_url then
+--							g.insert_new_row_parented (g.row_count + 1, l_row)
+--							l_subrow := g.row (g.row_count)
+--							l_subrow.set_item (1, create {EV_GRID_ITEM})
+--							create glab.make_with_text ("test #" + l_tests.item + ": " + l_url)
+--							glab.set_data (l_url)
+--							glab.pointer_double_press_actions.force_extend (agent open_url (l_url))
+--							l_subrow.set_item (2, glab)
+--						end
+--						l_tests.forth
+--					end
+--					if l_row.is_expandable then
+--						l_row.expand
+--					end
+--				end
+--				if
+----					attached rsvnlog.parent as repo and then
+--					repo.has_test_url and then
+--					attached md.matches.item ("incr") as l_tests
+--				then
+--					from
+--						l_tests.start
+--					until
+--						l_tests.after
+--					loop
+--						if attached repo.test_url (l_tests.item) as l_url then
+--							g.insert_new_row_parented (g.row_count + 1, l_row)
+--							l_subrow := g.row (g.row_count)
+--							l_subrow.set_item (1, create {EV_GRID_ITEM})
+--							create glab.make_with_text ("incr #" + l_tests.item + ": " + l_url)
+--							glab.set_data (l_url)
+--							glab.pointer_double_press_actions.force_extend (agent open_url (l_url))
+--							l_subrow.set_item (2, glab)
+--						end
+--						l_tests.forth
+--					end
+--					if l_row.is_expandable then
+--						l_row.expand
+--					end
+--				end
 
 				if attached rsvnlog.svn_revision.paths as l_changes and then l_changes.count > 0 then
 					g.insert_new_row (g.row_count + 1)
@@ -288,84 +369,114 @@ feature -- Element change
 
 feature {NONE} -- Smart log message
 
-	smart_log_message (a_log: REPOSITORY_LOG): TUPLE [message: STRING; issues: detachable LIST [STRING]]
+	smart_log_message (a_log: REPOSITORY_LOG; a_patterns: detachable ARRAY [detachable STRING]): TUPLE [message: STRING; matches: HASH_TABLE [detachable LIST [STRING], STRING]]
 		local
-			mesg, m: STRING
-			s: STRING
---			kmp: KMP_MATCHER
-			p, i, d, n, e: INTEGER
-			bugs: detachable ARRAYED_LIST [STRING]
+			mesg: STRING
+			lst: detachable LIST [STRING]
+			l_matches: HASH_TABLE [detachable LIST [STRING], STRING]
+			t: like smart_pattern_computation
+			i, n: INTEGER
 		do
-			if attached a_log.parent as repo and then repo.has_issue_url then
-				from
-					m := a_log.message
-					n := m.count
-					create mesg.make (n)
-					create bugs.make (1)
-					i := 1
-					p := 1
-				until
-					p > n
-				loop
-					i := m.substring_index ("bug", p)
-					if i > 0 then
-							--| skip space					
-						from
-							d := i + 3
-						until
-							d > n or else (m[d] = '#' or not m[d].is_space)
-						loop
-							d := d + 1
-						end
-						if m[d] = '#' then
-							--| Found "bug #"						
-
-							--| skip space
-							from
-								e := d + 1
-							until
-								e > n or else not m[e].is_space
-							loop
-								e := e + 1
-							end
-							--| get word
-							from
-								create s.make_empty
-							until
-								e > n or else not m[e].is_alpha_numeric
-							loop
-								s.extend (m[e])
-								e := e + 1
-							end
-							if s.is_integer then
-								mesg.append_string (m.substring (p, e))
-								bugs.force (s)
-	--							Result.append_string (m.substring (p, i - 1))
-	--							Result.append_string ("BUG["+s+"] ")
-								p := e + 1
-							else
-								mesg.append_string (m.substring (p, d))
-								p := d + 1
-							end
-						else
-							mesg.append_string (m.substring (p, i + 3))
-							p := i + 4
-						end
-					else
-						mesg.append_string (m.substring (p, n))
-						p := n + 1
-					end
-				end
-				if bugs.count = 0 then
-					bugs := Void
-				end
+			if a_patterns /= Void then
+				create l_matches.make (a_patterns.count)
 			else
-				mesg := a_log.message
+				create l_matches.make (0)
 			end
-			Result := [mesg, bugs]
+			Result := [a_log.message, l_matches] --| message, matches |--
+			if a_patterns /= Void and then a_patterns.count > 0 then
+				from
+					i := a_patterns.lower
+					n := a_patterns.upper
+					mesg := a_log.message
+				until
+					i > n
+				loop
+					if attached a_patterns[i] as k then
+						t := smart_pattern_computation (mesg, k)
+						mesg := t.mesg
+						lst := t.lst
+						l_matches.force (lst, k)
+					end
+					i := i + 1
+				end
+				Result.message := mesg
+			end
 		end
 
 feature {NONE} -- Implementation
+
+	smart_pattern_computation (m: STRING; k: STRING): TUPLE [mesg: STRING; lst: detachable LIST [STRING]]
+		require
+			m_attached: m /= Void
+			k_not_empty: k /= Void and then k.count > 0
+		local
+			klen, n,d,e,i,p: INTEGER
+			s: STRING
+			mesg: STRING
+			lst: detachable ARRAYED_LIST [STRING]
+		do
+			from
+				n := m.count
+				klen := k.count
+				create mesg.make (n)
+				create lst.make (1)
+				i := 1
+				p := 1
+			until
+				p > n
+			loop
+				i := m.substring_index (k, p)
+				if i > 0 then
+						--| skip space					
+					from
+						d := i + klen
+					until
+						d > n or else (m[d] = '#' or not m[d].is_space)
+					loop
+						d := d + 1
+					end
+					if m[d] = '#' then
+						--| Found k + " #"						
+
+						--| skip space
+						from
+							e := d + 1
+						until
+							e > n or else not m[e].is_space
+						loop
+							e := e + 1
+						end
+						--| get word
+						from
+							create s.make_empty
+						until
+							e > n or else not m[e].is_alpha_numeric
+						loop
+							s.extend (m[e])
+							e := e + 1
+						end
+						if not s.is_empty then
+							mesg.append_string (m.substring (p, e))
+							lst.force (s)
+							p := e + 1
+						else
+							mesg.append_string (m.substring (p, d))
+							p := d + 1
+						end
+					else
+						mesg.append_string (m.substring (p, i + klen))
+						p := i + 4
+					end
+				else
+					mesg.append_string (m.substring (p, n))
+					p := n + 1
+				end
+			end
+			if lst.count = 0 then
+				lst := Void
+			end
+			Result := [mesg, lst]
+		end
 
 	open_url (a_url: STRING)
 		local

@@ -31,4 +31,9 @@ feature -- Status report
 			Result := a_log.message.has_substring (message)
 		end
 
+	to_string: STRING
+		do
+			Result := "message=" + message
+		end
+
 end

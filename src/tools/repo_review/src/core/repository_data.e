@@ -10,6 +10,8 @@ deferred class
 inherit
 	REPOSITORY_SHARED
 
+	HASHABLE
+
 feature {NONE} -- Initialization
 
 	make (a_uuid: UUID; a_repo: like repository)
@@ -49,21 +51,47 @@ feature -- Status report
 			Result := unread_logs.count
 		end
 
+	unread_log_count_for (a_filter: detachable REPOSITORY_LOG_FILTER): INTEGER
+		do
+			Result := unread_log_count
+			if
+				Result > 0 and a_filter /= Void and then
+				attached logs as l_logs
+			then
+				Result := 0
+				across
+					unread_logs as c
+				loop
+					if
+						attached l_logs.item (c.key) as l_log and then
+						a_filter.matched (l_log)
+					then
+						Result := Result + 1
+					end
+				end
+			end
+		ensure
+			Result_valid: Result <= unread_log_count
+		end
+
 	review_enabled: BOOLEAN
 		do
 			Result := repository.review_enabled
 		end
 
-	has_issue_url: BOOLEAN
+	tokens: detachable HASH_TABLE [TUPLE [url_pattern: STRING_8; key: STRING_8], STRING_8]
 		do
-			Result := repository.issue_url_pattern /= Void
+			Result := repository.tokens
 		end
 
-	issue_url (s: STRING): detachable STRING
-		require
-			has_issue_url: has_issue_url
+	tokens_keys: detachable ARRAY [STRING]
 		do
-			Result := repository.issue_url (s)
+			Result := repository.tokens_keys
+		end
+
+	token_url (a_name: STRING; v: STRING): detachable STRING
+		do
+			Result := repository.token_url (a_name, v)
 		end
 
 feature -- Access
@@ -487,6 +515,14 @@ feature -- Persistence
 					f.close
 				end
 			end
+		end
+
+feature -- Status report
+
+	hash_code: INTEGER
+			-- Hash code value
+		do
+			Result := uuid.hash_code
 		end
 
 feature {NONE} -- Implementation
