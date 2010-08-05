@@ -129,25 +129,27 @@ feature -- Basic operation
 				end
 
 				connect
-				login
 				if not last_error_occurred then
---					xmlrpc_client.remote_call ("ise.ctr.log", <<a_log.id>>)
-					xmlrpc_client.remote_call ("ise.ctr.post_review", <<a_log.id, l_user_name, l_data>>)
-					if xmlrpc_client.last_answer_is_fault then
-						last_error := err_trouble_during_remote_call
-						if attached xmlrpc_client.last_fault_response as l_fault then
-							last_error_message := l_fault.message
-						end
-					elseif attached xmlrpc_client.last_answer as rep then
-						if attached {XRPC_STRING} rep.value as rep_s then
-							print (rep_s.item)
-						else
-							print (rep.value.out)
+					login
+					if not last_error_occurred then
+	--					xmlrpc_client.remote_call ("ise.ctr.log", <<a_log.id>>)
+						xmlrpc_client.remote_call ("ise.ctr.post_review", <<a_log.id, l_user_name, l_data>>)
+						if xmlrpc_client.last_answer_is_fault then
+							last_error := err_trouble_during_remote_call
+							if attached xmlrpc_client.last_fault_response as l_fault then
+								last_error_message := l_fault.message
+							end
+						elseif attached xmlrpc_client.last_answer as rep then
+							if attached {XRPC_STRING} rep.value as rep_s then
+								print (rep_s.item)
+							else
+								print (rep.value.out)
+							end
 						end
 					end
+					logout
+					disconnect
 				end
-				logout
-				disconnect
 				if not last_error_occurred then
 					across
 						l_entries as c
@@ -157,8 +159,6 @@ feature -- Basic operation
 					end
 				end
 			end
-			print (r + "%N")
-
 --			last_error := err_connection_trouble
 		end
 

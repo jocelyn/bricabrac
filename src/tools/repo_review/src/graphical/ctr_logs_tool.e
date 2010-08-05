@@ -61,7 +61,7 @@ feature {NONE} -- Initialization
 --			g.disable_selection_on_click
 			g.pointer_button_press_item_actions.extend (agent on_item_pointer_pressed)
 			g.pointer_button_release_item_actions.extend (agent on_item_pointer_released)
---			g.row_select_actions.extend (agent on_log_row_selected)
+			g.row_select_actions.extend (agent on_log_row_selected)
 			g.pointer_double_press_item_actions.extend (agent on_log_item_double_clicked)
 			create mtb.make
 			create tbbut.make
@@ -496,7 +496,7 @@ feature {CTR_WINDOW} -- Implementation
 		do
 			if a_cell /= Void and then attached a_cell.row as r and then attached r.parent as g then
 				if a_but = 1 then
-					ev_application.add_idle_action_kamikaze (agent on_log_row_selected (r))
+--					ev_application.add_idle_action_kamikaze (agent on_log_row_selected (r))
 --					on_log_row_selected (r)
 				else
 					if attached new_row_log_menu (r) as m then
@@ -516,113 +516,129 @@ feature {CTR_WINDOW} -- Implementation
 			user_rev_data: detachable like {REPOSITORY_LOG_REVIEW}.user_review
 		do
 			if attached {REPOSITORY_LOG} r.data as l_log then
-				if attached l_log.parent.review_username as u then
-					l_username := u
-				end
-
 				create m.make_with_text (l_log.id)
 				create mi.make_with_text (l_log.id)
 				mi.disable_sensitive
 				m.extend (mi)
 				m.extend (create {EV_MENU_SEPARATOR})
-				create mi.make_with_text ("Review #" + l_log.id)
-				mi.disable_sensitive
-				m.extend (mi)
+				if l_log.parent.review_enabled then
+					if attached l_log.parent.review_username as u then
+						l_username := u
+					end
 
-				if l_log.has_review then
-					rev_data := l_log.review
-					if rev_data /= Void and l_username /= Void then
-						user_rev_data := rev_data.user_review (l_username, Void)
+					create mi.make_with_text ("Review #" + l_log.id)
+					mi.disable_sensitive
+					m.extend (mi)
+
+					if l_log.has_review then
+						rev_data := l_log.review
+						if rev_data /= Void and l_username /= Void then
+							user_rev_data := rev_data.user_review (l_username, Void)
+						end
+					end
+
+					create mci.make_with_text ("Approve")
+					if user_rev_data /= Void and then user_rev_data.is_approved_status then
+						mci.enable_select
+						mci.select_actions.extend (agent (ia_log: REPOSITORY_LOG; ia_rev: detachable REPOSITORY_LOG_REVIEW; ia_usr: detachable STRING)
+							local
+								rev: detachable REPOSITORY_LOG_REVIEW
+							do
+								if ia_usr /= Void then
+									rev := ia_rev
+									if rev = Void then
+										create rev.make
+									end
+									rev.unapprove (ia_usr)
+									ia_log.parent.store_log_review (ia_log, rev)
+									update_log (ia_log)
+								end
+							end(l_log, rev_data, l_username)
+						)
+					else
+						mci.select_actions.extend (agent (ia_log: REPOSITORY_LOG; ia_rev: detachable REPOSITORY_LOG_REVIEW; ia_usr: detachable STRING)
+							local
+								rev: detachable REPOSITORY_LOG_REVIEW
+							do
+								if ia_usr /= Void then
+									rev := ia_rev
+									if rev = Void then
+										create rev.make
+									end
+									rev.approve (ia_usr)
+									ia_log.parent.store_log_review (ia_log, rev)
+									update_log (ia_log)
+								end
+							end(l_log, rev_data, l_username)
+						)
+					end
+					m.extend (mci)
+					create mci.make_with_text ("Refuse")
+					if user_rev_data /= Void and then user_rev_data.is_refused_status then
+						mci.enable_select
+						mci.select_actions.extend (agent (ia_log: REPOSITORY_LOG; ia_rev: detachable REPOSITORY_LOG_REVIEW; ia_usr: detachable STRING)
+							local
+								rev: detachable REPOSITORY_LOG_REVIEW
+							do
+								if ia_usr /= Void then
+									rev := ia_rev
+									if rev = Void then
+										create rev.make
+									end
+									rev.unrefuse (ia_usr)
+									ia_log.parent.store_log_review (ia_log, rev)
+									update_log (ia_log)
+								end
+							end(l_log, rev_data, l_username)
+						)
+					else
+						mci.select_actions.extend (agent (ia_log: REPOSITORY_LOG; ia_rev: detachable REPOSITORY_LOG_REVIEW; ia_usr: detachable STRING)
+							local
+								rev: detachable REPOSITORY_LOG_REVIEW
+							do
+								if ia_usr /= Void then
+									rev := ia_rev
+									if rev = Void then
+										create rev.make
+									end
+									rev.refuse (ia_usr)
+									ia_log.parent.store_log_review (ia_log, rev)
+									update_log (ia_log)
+								end
+							end(l_log, rev_data, l_username)
+						)
+					end
+					m.extend (mci)
+					create mci.make_with_text ("Comment")
+					if user_rev_data /= Void and then user_rev_data.is_question_status then
+						mci.enable_select
+					end
+					m.extend (mci)
+
+					m.extend (create {EV_MENU_SEPARATOR})
+					create mi.make_with_text ("Submit Review")
+					m.extend (mi)
+					if user_rev_data = Void then
+						mi.disable_sensitive
+					elseif not user_rev_data.is_remote then
+						mi.enable_sensitive
+						mi.select_actions.extend (agent (ia_log: REPOSITORY_LOG)
+								do
+									if
+										attached ia_log.review as l_review and then
+										attached ia_log.parent.review_client as l_client
+									then
+										l_client.submit (ia_log, l_review)
+										if l_client.last_error_occurred then
+											print (l_client.last_error_to_string + "%N")
+										end
+									end
+								end(l_log)
+						)
 					end
 				end
 
-				create mci.make_with_text ("Approve")
-				if user_rev_data /= Void and then user_rev_data.is_approved_status then
-					mci.enable_select
-					mci.select_actions.extend (agent (ia_log: REPOSITORY_LOG; ia_rev: detachable REPOSITORY_LOG_REVIEW; ia_usr: detachable STRING)
-						local
-							rev: detachable REPOSITORY_LOG_REVIEW
-						do
-							if ia_usr /= Void then
-								rev := ia_rev
-								if rev = Void then
-									create rev.make
-								end
-								rev.unapprove (ia_usr)
-								ia_log.parent.store_log_review (ia_log, rev)
-								update_log (ia_log)
-							end
-						end(l_log, rev_data, l_username)
-					)
-				else
-					mci.select_actions.extend (agent (ia_log: REPOSITORY_LOG; ia_rev: detachable REPOSITORY_LOG_REVIEW; ia_usr: detachable STRING)
-						local
-							rev: detachable REPOSITORY_LOG_REVIEW
-						do
-							if ia_usr /= Void then
-								rev := ia_rev
-								if rev = Void then
-									create rev.make
-								end
-								rev.approve (ia_usr)
-								ia_log.parent.store_log_review (ia_log, rev)
-								update_log (ia_log)
-							end
-						end(l_log, rev_data, l_username)
-					)
-				end
-				m.extend (mci)
-				create mci.make_with_text ("Refuse")
-				if user_rev_data /= Void and then user_rev_data.is_refused_status then
-					mci.enable_select
-					mci.select_actions.extend (agent (ia_log: REPOSITORY_LOG; ia_rev: detachable REPOSITORY_LOG_REVIEW; ia_usr: detachable STRING)
-						local
-							rev: detachable REPOSITORY_LOG_REVIEW
-						do
-							if ia_usr /= Void then
-								rev := ia_rev
-								if rev = Void then
-									create rev.make
-								end
-								rev.unrefuse (ia_usr)
-								ia_log.parent.store_log_review (ia_log, rev)
-								update_log (ia_log)
-							end
-						end(l_log, rev_data, l_username)
-					)
-				else
-					mci.select_actions.extend (agent (ia_log: REPOSITORY_LOG; ia_rev: detachable REPOSITORY_LOG_REVIEW; ia_usr: detachable STRING)
-						local
-							rev: detachable REPOSITORY_LOG_REVIEW
-						do
-							if ia_usr /= Void then
-								rev := ia_rev
-								if rev = Void then
-									create rev.make
-								end
-								rev.refuse (ia_usr)
-								ia_log.parent.store_log_review (ia_log, rev)
-								update_log (ia_log)
-							end
-						end(l_log, rev_data, l_username)
-					)
-				end
-				m.extend (mci)
-				create mci.make_with_text ("Comment")
-				if user_rev_data /= Void and then user_rev_data.is_question_status then
-					mci.enable_select
-				end
-				m.extend (mci)
-
-				m.extend (create {EV_MENU_SEPARATOR})
-				create mi.make_with_text ("Submit Review")
-				m.extend (mi)
-				if user_rev_data = Void then
-					mi.disable_sensitive
-				elseif not user_rev_data.is_remote then
-					mi.enable_sensitive
-				end
-
+					--| Read/delete/...
 				m.extend (create {EV_MENU_SEPARATOR})
 				create mci.make_with_text ("Read")
 				if l_log.unread then

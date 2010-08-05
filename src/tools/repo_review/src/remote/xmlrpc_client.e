@@ -77,7 +77,10 @@ feature -- Basic operation
 			send ("system.connect", Void)
 			if attached last_answer as rep then
 				if attached {XRPC_STRUCT} rep.value as l_struct then
-					if attached {XRPC_STRING} l_struct.item ("sessid") as l_sessid_string then
+					if
+						l_struct.has_member ("sessid") and then
+						attached {XRPC_STRING} l_struct.item ("sessid") as l_sessid_string
+					then
 						session_id := l_sessid_string.value
 					end
 				end
