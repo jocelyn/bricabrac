@@ -105,7 +105,7 @@ feature {NONE} -- Document
 			-- Forward finish.
 		do
 			if on_finish_callback /= Void then
-				on_finish_callback.call (void)
+				on_finish_callback.call (Void)
 			end
 		end
 
