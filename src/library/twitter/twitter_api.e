@@ -394,7 +394,7 @@ feature -- Twitter: User Methods
 				l_api_call := twitter_url ("users/show." + format, <<["screen_name", a_screen_name]>>)
 			end
 			if l_api_call /= Void then
-				Result := api_get_auth_call (l_api_call)
+				Result := api_get_call (l_api_call, False)
 			else
 				create Result.make_empty
 			end
@@ -1288,7 +1288,7 @@ feature {NONE} -- Constants
 	atom_id: STRING = "atom"
 
 note
-	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2010, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat

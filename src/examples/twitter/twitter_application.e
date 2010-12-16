@@ -18,6 +18,44 @@ feature {NONE} -- Initialization
 	make
 			-- Initialize `Current'.
 		local
+			t: detachable TWITTER_I
+			s: STRING
+		do
+			create {TWITTER_JSON} t.make_with_source (Void, Void, "EiffelTwitter")
+			if attached t.test as l_test then
+				print (l_test)
+			end
+			twitter_interface := t
+
+			if index_of_word_option ("anonymous") > 0 then
+				print ("No authentication%N")
+			else
+				process_authentication
+			end
+
+			t := twitter_interface
+			if t /= Void then
+				if attached authenticated_user as l_user then
+					print ("Authentication succeed...%N")
+					test (t)
+				else
+					print ("Authentication: BAD%N")
+					test_without_authentication (t)
+				end
+			end
+			print ("Bye ...%N")
+		end
+
+feature -- Twitter
+
+	twitter_interface: detachable TWITTER_I
+
+feature -- Authentication
+
+	authenticated_user: detachable TWITTER_USER
+
+	process_authentication
+		local
 			t: TWITTER_I
 			s: STRING
 			pref: like preferences
@@ -27,18 +65,11 @@ feature {NONE} -- Initialization
 			if retried <= 1 then
 				pref := preferences (ask_new)
 				create {TWITTER_JSON} t.make_with_source (pref.login, pref.password, "EiffelTwitter")
-				if attached t.test as l_test then
-					print (l_test)
-				end
+				twitter_interface := t
 
 				if attached t.verify_credentials as l_user then
-					print ("Authentication succeed...%N")
-					test (t)
-				else
-					print ("Auth: BAD%N")
+					authenticated_user := l_user
 				end
-			else
-				print ("Bye ...%N")
 			end
 		rescue
 			if
@@ -52,6 +83,7 @@ feature {NONE} -- Initialization
 			retried := retried + 1
 			ask_new := True
 			retry
+
 		end
 
 	test (t: TWITTER_I)
@@ -113,6 +145,37 @@ feature {NONE} -- Initialization
 				else
 					if attached t.update_status (s, i) as l_stat then
 						i := l_stat.id
+					end
+				end
+			end
+		end
+
+	test_without_authentication (t: TWITTER_I)
+		local
+			s: detachable STRING
+			i: INTEGER
+			a: detachable ANY
+		do
+			if attached t.public_timeline as l_public then
+				print (l_public)
+				print ("Public Time Line:%N")
+				display_statuses (l_public)
+			end
+			if attached t.user (0, "djocenet") as l_user then
+				display_user (l_user, True)
+				if attached l_user.status as l_status then
+					if attached t.status (l_status.id) as l_full_status then
+						display_status (l_full_status, True)
+					end
+				end
+				if attached t.user_timeline (l_user.id, l_user.screen_name, Void, 0, 5, 0) as l_statuses then
+					from
+						l_statuses.start
+					until
+						l_statuses.after
+					loop
+						display_status (l_statuses.item, True)
+						l_statuses.forth
 					end
 				end
 			end
