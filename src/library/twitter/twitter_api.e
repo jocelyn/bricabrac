@@ -1262,7 +1262,7 @@ feature -- Access: Encoding
 
 feature {NONE} -- Implementation
 
-	curl: CURL_EXTERNALS is
+	curl: CURL_EXTERNALS
 			-- cURL externals
 		once
 			create Result

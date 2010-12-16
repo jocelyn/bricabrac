@@ -15,7 +15,7 @@ create
 
 feature {NONE} -- Initialization
 
-	make is
+	make
 			-- Initialize `Current'.
 		local
 			t: TWITTER_I
@@ -53,7 +53,7 @@ feature {NONE} -- Initialization
 			i: INTEGER
 			a: detachable ANY
 		do
-			if attached t.rate_limit_status as rate then
+			if attached t.rate_limit_status (False) as rate then
 				print ("  - hourly_limit   =" + rate.hourly_limit.out + "%N")
 				print ("  - remaining_hits =" + rate.remaining_hits.out + "%N")
 			end
@@ -220,7 +220,7 @@ feature -- Change
 
 note
 	description: "Example Twitter client"
-	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2010, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat

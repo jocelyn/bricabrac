@@ -397,7 +397,7 @@ feature -- Twitter: Account Methods
 		deferred
 		end
 
-	rate_limit_status (a_credentials_provided: BOOLEAN): detachable TUPLE [ reset_time_in_seconds: INTEGER; remaining_hits: INTEGER; hourly_limit: INTEGER; reset_time: detachable STRING]
+	rate_limit_status (a_credentials_provided: BOOLEAN): detachable TUPLE [reset_time_in_seconds: INTEGER; remaining_hits: INTEGER; hourly_limit: INTEGER; reset_time: detachable STRING]
 			-- Returns the remaining number of API requests available to the requesting user before the API limit is reached for the current hour.
 			-- Calls to rate_limit_status do not count against the rate limit.
 			-- If authentication credentials are provided `a_credentials_provided',
@@ -513,7 +513,7 @@ feature -- Twitter: Help Methods
 
 
 note
-	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2010, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat
