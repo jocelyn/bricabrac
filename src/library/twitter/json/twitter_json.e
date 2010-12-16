@@ -233,6 +233,12 @@ feature -- Twitter: Account Methods
 						create err
 						err.set_message (l_error)
 						err.raise
+					elseif attached {JSON_ARRAY} json_value (j, "errors") as l_array then
+						create err
+						if attached string_value_from_json (l_array.i_th (1), "message") as l_err_message then
+							err.set_message (l_err_message)
+						end
+						err.raise
 					else
 						Result := twitter_user (Void, j)
 					end
@@ -635,7 +641,7 @@ feature {NONE} -- Implementation
 		end
 
 note
-	copyright: "Copyright (c) 2003-2009, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2010, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat

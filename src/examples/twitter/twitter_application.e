@@ -41,7 +41,14 @@ feature {NONE} -- Initialization
 				print ("Bye ...%N")
 			end
 		rescue
-			print ("Authentication failed. Retry ...%N")
+			if
+				attached (create {EXCEPTION_MANAGER}).last_exception as e and then
+				attached e.message as l_err_message
+			then
+				print ("Authentication failed:%N" + l_err_message + "%NRetry ...%N")
+			else
+				print ("Authentication failed. Retry ...%N")
+			end
 			retried := retried + 1
 			ask_new := True
 			retry
