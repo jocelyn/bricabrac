@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-8-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-8-0 http://www.eiffel.com/developers/xml/configuration-1-8-0.xsd" name="exiftool" uuid="9CB12B98-9F46-4864-BE59-3998DE849EF1">
+	<target name="exiftool">
+		<root class="EXIFTOOL" feature="make"/>
+		<option debug="false" full_class_checking="true" is_attached_by_default="true" void_safety="all">
+			<debug name="__unnamed_debug__" enabled="false"/>
+			<debug name="exiftool" enabled="true"/>
+		</option>
+		<setting name="console_application" value="true"/>
+		<setting name="concurrency" value="thread"/>
+		<library name="arg_parser" location="$ISE_LIBRARY\library\argument_parser\argument_parser-safe.ecf"/>
+		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
+		<library name="process" location="$ISE_LIBRARY\library\process\process-safe.ecf"/>
+		<library name="time" location="$ISE_LIBRARY\library\time\time-safe.ecf"/>
+		<library name="xml_parser" location="$ISE_LIBRARY\library\text\parser\xml\parser\xml_parser-safe.ecf"/>
+		<library name="xml_tree" location="$ISE_LIBRARY\library\text\parser\xml\tree\xml_tree-safe.ecf"/>
+		<cluster name="exiftool" location=".\"/>
+	</target>
+</system>
