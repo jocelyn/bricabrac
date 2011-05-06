@@ -18,7 +18,7 @@ feature {NONE} -- Initialization
 			prefixname := a_prefix
 			localname := a_local_part
 			if a_prefix /= Void then
-				name := a_prefix + "." + a_local_part
+				name := a_prefix + ":" + a_local_part
 			else
 				name := a_local_part
 			end
@@ -82,7 +82,7 @@ feature -- Query
 
 	child_content (n, d: STRING): STRING
 		do
-			if {l_tag: like child} child (n) then
+			if attached child (n) as l_tag then
 				Result := l_tag.content
 			end
 			if Result = Void then
@@ -91,7 +91,7 @@ feature -- Query
 		end
 
 note
-	copyright: "Copyright (c) 2003-2008, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2011, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat

@@ -8,7 +8,7 @@ class
 	XMPP_XML_PARSER
 
 inherit
-	XM_CALLBACKS
+	XML_CALLBACKS
 
 create
 	make
@@ -30,7 +30,7 @@ feature -- Element change
 
 	reset
 		do
-			if {lst: like tag_list} tag_list then
+			if attached tag_list as lst then
 				lst.wipe_out
 			end
 			last_depth := 0
@@ -45,38 +45,38 @@ feature -- Element change
 
 feature {NONE} -- Document
 
-	on_start is
+	on_start
 			-- Forward start.
 		do
 			create tag_list.make (3)
 			last_depth := 0
 		end
 
-	on_finish is
+	on_finish
 			-- Forward finish.
 		do
 		end
 
-	on_xml_declaration (a_version: STRING; an_encoding: STRING; a_standalone: BOOLEAN) is
+	on_xml_declaration (a_version: STRING; an_encoding: STRING; a_standalone: BOOLEAN)
 			-- XML declaration.
 		do
 		end
 
 feature {NONE} -- Errors
 
-	on_error (a_message: STRING) is
+	on_error (a_message: STRING)
 			-- Event producer detected an error.
 		do
 		end
 
 feature {NONE} -- Meta
 
-	on_processing_instruction (a_name, a_content: STRING) is
+	on_processing_instruction (a_name, a_content: STRING)
 			-- Forward PI.
 		do
 		end
 
-	on_comment (a_content: STRING) is
+	on_comment (a_content: STRING)
 			-- Forward comment.
 		do
 		end
@@ -94,7 +94,7 @@ feature {NONE} -- Tag
 
 	pop_tag: like current_tag
 		do
-			if {lst: like tag_list} tag_list and then not lst.is_empty then
+			if attached tag_list as lst and then not lst.is_empty then
 				lst.finish
 				Result := lst.item
 				lst.remove
@@ -108,7 +108,7 @@ feature {NONE} -- Tag
 			end
 		end
 
-	on_start_tag (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING) is
+	on_start_tag (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING)
 			-- Start of start tag.
 		local
 			p, t: like current_tag
@@ -120,20 +120,20 @@ feature {NONE} -- Tag
 			if p /= Void then
 				p.childs.force (t)
 			end
-			if {ag: like start_xml_agent} start_xml_agent then
+			if attached start_xml_agent as ag then
 				ag.call ([t])
 			end
 		end
 
-	on_attribute (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING; a_value: STRING) is
+	on_attribute (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING; a_value: STRING)
 			-- Process attribute.
 		do
-			if {t: like current_tag} current_tag then
+			if attached current_tag as t then
 				t.attribs.force (a_value, a_local_part.as_lower)
 			end
 		end
 
-	on_start_tag_finish is
+	on_start_tag_finish
 			-- End of start tag.
 		do
 --			if {t: like current_tag} current_tag then
@@ -141,12 +141,12 @@ feature {NONE} -- Tag
 --			end
 		end
 
-	on_end_tag (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING) is
+	on_end_tag (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING)
 			-- End tag.
 		do
 			last_depth := last_depth - 1
-			if {t: like pop_tag} pop_tag then
-				if {ag: like end_xml_agent} end_xml_agent then
+			if attached pop_tag as t then
+				if attached end_xml_agent as ag then
 					ag.call ([t])
 				end
 			end
@@ -157,16 +157,16 @@ feature {NONE} -- Tag
 
 feature {NONE} -- Content
 
-	on_content (a_content: STRING) is
+	on_content (a_content: STRING)
 			-- Forward content.
 		do
-			if {t: like current_tag} current_tag then
+			if attached current_tag as t then
 				t.content.append (a_content)
 			end
 		end
 
 note
-	copyright: "Copyright (c) 2003-2008, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2011, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat

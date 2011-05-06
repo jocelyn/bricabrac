@@ -337,7 +337,7 @@ feature -- Handler
 					s.append_character ('%U')
 					s.append_string (password)
 					send("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='PLAIN'>"
-						+ base64_encoded_2 (s)
+						+ base64_encoded (s)
 						+ "</auth>")
 				else
 					send("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='ANONYMOUS'/>")
@@ -401,7 +401,7 @@ feature -- Handler
 			create l_contacts.make
 			if
 				l_xmlroster /= Void and then
-				{l_subs: LIST [XMPP_XML_TAG]} l_xmlroster.childs
+				attached {LIST [XMPP_XML_TAG]} l_xmlroster.childs as l_subs
 			then
 				from
 					l_subs.start
@@ -414,7 +414,7 @@ feature -- Handler
 						create l_user.make (l_tag.attribute_value (word_jid, Void)) -- Required
 						l_user.name := l_tag.attribute_value (word_name, Void) -- May
 						l_user.subscription := l_tag.attribute_value (word_subscription, Void)
-						if {l_tag_subs: LIST [XMPP_XML_TAG]} l_tag.childs then
+						if attached {LIST [XMPP_XML_TAG]} l_tag.childs as l_tag_subs then
 							from
 								l_tag_subs.start
 							until
@@ -483,14 +483,14 @@ feature -- Handler
 			vcard := a_xml.child (word_vcard)
 			create l_vcard_array.make (word_vcard)
 				--| go through all of the sub elements and add them to the vcard array
-			if vcard /= Void and then {l_subs: LIST [XMPP_XML_TAG]} vcard.childs then
+			if vcard /= Void and then attached {LIST [XMPP_XML_TAG]} vcard.childs as l_subs then
 				from
 					l_subs.start
 				until
 					l_subs.after
 				loop
 					if
-						{l_sub_subs: LIST [XMPP_XML_TAG]} l_subs.item.childs and then
+						attached {LIST [XMPP_XML_TAG]} l_subs.item.childs as l_sub_subs and then
 						not l_sub_subs.is_empty
 					then
 						from
@@ -580,7 +580,7 @@ feature {NONE} -- Implementation
 
 
 note
-	copyright: "Copyright (c) 2003-2008, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2011, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat
