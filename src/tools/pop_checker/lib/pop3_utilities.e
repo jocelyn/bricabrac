@@ -1,8 +1,8 @@
 note
 	description: "Summary description for {POP3_UTILITIES}."
 	author: ""
-	date: "$Date$"
-	revision: "$Revision$"
+	date: "$Date: 2009-06-18 18:23:06 +0200 (Thu, 18 Jun 2009) $"
+	revision: "$Revision: 38 $"
 
 class
 	POP3_UTILITIES
@@ -52,9 +52,9 @@ feature -- Encoder base64
 				n := s.count
 				i := (8 * n) \\ 6
 				if i > 0 then
-					create f.make (8 * n + (6 - i))
+					create f.make_empty (8 * n + (6 - i))
 				else
-					create f.make (8 * n)
+					create f.make_empty (8 * n)
 				end
 				i := 0
 			until

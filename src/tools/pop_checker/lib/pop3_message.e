@@ -1,8 +1,8 @@
 note
 	description: "Summary description for {POP3_MESSAGE}."
 	author: ""
-	date: "$Date$"
-	revision: "$Revision$"
+	date: "$Date: 2009-06-29 12:46:51 +0200 (Mon, 29 Jun 2009) $"
+	revision: "$Revision: 40 $"
 
 class
 	POP3_MESSAGE
@@ -238,7 +238,7 @@ feature -- Element change
 		require
 			a_lines_attached: a_lines /= Void
 		local
-			s, hk, hv, hv_k: detachable STRING
+			s, hk, hv: detachable STRING
 			h: like headers_text
 			p: INTEGER
 		do
@@ -257,16 +257,13 @@ feature -- Element change
 					check p > 0 end
 					hk := s.substring (1, p - 1)
 					hv := s.substring (p + 1, s.count)
-					if headers.has_key (hk) then
-						hv_k := headers.found_item
-						check hv_k /= Void end -- implied by `has_key'
+					if attached headers.item (hk) as hv_k then
 						headers.force (hv_k + "%N" + hv, hk)
 					else
 						headers.force (hv, hk)
 					end
 --					print (" - " + hk + "%N")
-				else
-					check hv /= Void end
+				elseif hv /= Void then
 					hv.append_character ('%N')
 					hv.append_string (s)
 				end
