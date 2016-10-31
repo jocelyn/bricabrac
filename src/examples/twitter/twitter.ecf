@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-7-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-7-0 http://www.eiffel.com/developers/xml/configuration-1-7-0.xsd" name="twitter" uuid="DD5713E9-838C-4B45-A6A2-384DC64A334C">
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-15-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-15-0 http://www.eiffel.com/developers/xml/configuration-1-15-0.xsd" name="twitter" uuid="DD5715E9-838C-4B45-A6A2-384DC64A334C">
 	<target name="twitter">
 		<root class="TWITTER_APPLICATION" feature="make"/>
-		<option debug="true" syntax="standard">
+		<option debug="true" is_attached_by_default="true" void_safety="all">
 			<debug name="twitter" enabled="true"/>
 		</option>
 		<setting name="console_application" value="true"/>
-		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
-		<library name="twitter" location="..\..\library\twitter\twitter.ecf" readonly="false">
+		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
+		<library name="twitter" location="..\..\library\obsolete\twitter\twitter-safe.ecf" readonly="false">
 			<option debug="true">
 				<debug name="twitter" enabled="true"/>
 			</option>
@@ -15,8 +15,8 @@
 		<cluster name="app_twitter" location=".\">
 			<file_rule>
 				<exclude>/EIFGENs$</exclude>
-				<exclude>/CVS$</exclude>
 				<exclude>/.svn$</exclude>
+				<exclude>/CVS$</exclude>
 			</file_rule>
 		</cluster>
 	</target>

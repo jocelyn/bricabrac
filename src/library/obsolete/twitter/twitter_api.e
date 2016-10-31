@@ -1,8 +1,8 @@
 note
 	description: "Summary description for {TWITTER}."
 	author: "Jocelyn Fiat"
-	date: "$Date$"
-	revision: "$Revision$"
+	date: "$Date: 2009-05-21 11:05:05 +0200 (Thu, 21 May 2009) $"
+	revision: "$Revision: 25 $"
 
 class
 	TWITTER_API
@@ -394,7 +394,7 @@ feature -- Twitter: User Methods
 				l_api_call := twitter_url ("users/show." + format, <<["screen_name", a_screen_name]>>)
 			end
 			if l_api_call /= Void then
-				Result := api_get_call (l_api_call, False)
+				Result := api_get_auth_call (l_api_call)
 			else
 				create Result.make_empty
 			end
@@ -1288,7 +1288,7 @@ feature {NONE} -- Constants
 	atom_id: STRING = "atom"
 
 note
-	copyright: "Copyright (c) 2003-2010, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2016, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat

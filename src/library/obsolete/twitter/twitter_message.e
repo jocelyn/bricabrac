@@ -1,8 +1,8 @@
 note
 	description: "Summary description for {TWITTER_MESSAGE}."
 	author: "Jocelyn Fiat"
-	date: "$Date$"
-	revision: "$Revision$"
+	date: "$Date: 2009-03-18 12:43:03 +0100 (Wed, 18 Mar 2009) $"
+	revision: "$Revision: 16 $"
 
 class
 	TWITTER_MESSAGE

@@ -1,8 +1,8 @@
 note
 	description : "Eiffel Twitter client"
-	author      : "$Author$"
-	date        : "$Date$"
-	revision    : "$Revision$"
+	author      : "$Author: jfiat $"
+	date        : "$Date: 2009-06-05 11:47:56 +0200 (Fri, 05 Jun 2009) $"
+	revision    : "$Revision: 30 $"
 
 class
 	E_TWITTER
