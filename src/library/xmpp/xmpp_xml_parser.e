@@ -1,8 +1,8 @@
 note
 	description: "Summary description for {XMPP_XML_PARSER}."
 	author: "Jocelyn Fiat"
-	date: "$Date$"
-	revision: "$Revision$"
+	date: "$Date: 2008-12-17 18:27:29 +0100 (Wed, 17 Dec 2008) $"
+	revision: "$Revision: 7 $"
 
 class
 	XMPP_XML_PARSER
@@ -18,6 +18,10 @@ feature {NONE} -- Initialization
 	make
 		do
 
+		end
+
+	initialize
+		do
 		end
 
 feature -- Access
@@ -57,26 +61,26 @@ feature {NONE} -- Document
 		do
 		end
 
-	on_xml_declaration (a_version: STRING; an_encoding: STRING; a_standalone: BOOLEAN)
+	on_xml_declaration (a_version: READABLE_STRING_32; an_encoding: READABLE_STRING_32; a_standalone: BOOLEAN)
 			-- XML declaration.
 		do
 		end
 
 feature {NONE} -- Errors
 
-	on_error (a_message: STRING)
+	on_error (a_message: READABLE_STRING_32)
 			-- Event producer detected an error.
 		do
 		end
 
 feature {NONE} -- Meta
 
-	on_processing_instruction (a_name, a_content: STRING)
+	on_processing_instruction (a_name, a_content: READABLE_STRING_32)
 			-- Forward PI.
 		do
 		end
 
-	on_comment (a_content: STRING)
+	on_comment (a_content: READABLE_STRING_32)
 			-- Forward comment.
 		do
 		end
@@ -108,7 +112,7 @@ feature {NONE} -- Tag
 			end
 		end
 
-	on_start_tag (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING)
+	on_start_tag (a_namespace: detachable READABLE_STRING_32; a_prefix: detachable READABLE_STRING_32; a_local_part: READABLE_STRING_32)
 			-- Start of start tag.
 		local
 			p, t: like current_tag
@@ -125,7 +129,7 @@ feature {NONE} -- Tag
 			end
 		end
 
-	on_attribute (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING; a_value: STRING)
+	on_attribute (a_namespace: READABLE_STRING_32; a_prefix: READABLE_STRING_32; a_local_part: READABLE_STRING_32; a_value: READABLE_STRING_32)
 			-- Process attribute.
 		do
 			if attached current_tag as t then
@@ -136,12 +140,12 @@ feature {NONE} -- Tag
 	on_start_tag_finish
 			-- End of start tag.
 		do
---			if {t: like current_tag} current_tag then
+--			if attached current_tag as t then
 --				print (t.name + "%N")
 --			end
 		end
 
-	on_end_tag (a_namespace: STRING; a_prefix: STRING; a_local_part: STRING)
+	on_end_tag (a_namespace: READABLE_STRING_32; a_prefix: READABLE_STRING_32; a_local_part: READABLE_STRING_32)
 			-- End tag.
 		do
 			last_depth := last_depth - 1
@@ -157,7 +161,7 @@ feature {NONE} -- Tag
 
 feature {NONE} -- Content
 
-	on_content (a_content: STRING)
+	on_content (a_content: READABLE_STRING_32)
 			-- Forward content.
 		do
 			if attached current_tag as t then
@@ -166,7 +170,7 @@ feature {NONE} -- Content
 		end
 
 note
-	copyright: "Copyright (c) 2003-2011, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2016, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat

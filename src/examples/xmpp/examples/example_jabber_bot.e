@@ -265,9 +265,9 @@ feature -- Actions
 			initialized: initialized
 			no_error: last_error = 0
 		local
-			i,j: INTEGER
-			l_to, par: STRING
-			msg: STRING
+--			i,j: INTEGER
+--			l_to, par: STRING
+--			msg: STRING
 		do
 --			xmpp.enter_room (a_status, a_show, a_to, a_type: STRING_8, a_priority: INTEGER_32)
 --			xmpp.send ("<presence from='" + xmpp.full_jid + "' to='eiffelstudio@conference.jabber.origo.ethz.ch/bricabot'/>")			

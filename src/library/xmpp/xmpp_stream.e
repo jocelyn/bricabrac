@@ -1,14 +1,16 @@
 note
 	description: "Summary description for {XMPP_STREAM}."
 	author: "Jocelyn Fiat"
-	date: "$Date$"
-	revision: "$Revision$"
+	date: "$Date: 2008-12-17 18:27:29 +0100 (Wed, 17 Dec 2008) $"
+	revision: "$Revision: 7 $"
 
 class
 	XMPP_STREAM
 
 inherit
 	ANY
+
+	UC_IMPORTED_UTF8_ROUTINES
 
 	EXECUTION_ENVIRONMENT
 		export
@@ -56,7 +58,7 @@ feature {NONE} -- Initialization
 	initialize_parser
 			-- Initialize XMP parser
 		local
-			l_parser: XML_LITE_CUSTOM_PARSER
+			l_parser: XML_CUSTOM_PARSER
 			l_callbacks: XMPP_XML_PARSER
 		do
 			create l_parser.make
@@ -150,7 +152,7 @@ feature {NONE} -- Implementation
 	packet_size: INTEGER
 			-- Read socket by amount of `packet_size' bytes
 
-	parser: XML_LITE_CUSTOM_PARSER
+	parser: XML_STANDARD_PARSER
 			-- XML parser
 
 	buffer: STRING
@@ -222,24 +224,27 @@ feature -- Element change: handler
 			-- Add xpath handler `a_hdl'
 		local
 			l_xpath_array: ARRAYED_LIST [TUPLE [path: STRING; name: STRING]]
+			r: RX_PCRE_REGULAR_EXPRESSION
 			ns_tags: ARRAY [STRING]
 			t: STRING
 			i, p: INTEGER
 		do
-			if attached xmpp_xpath_handler_matches (a_xpath) as l_matches and then l_matches.count > 0 then
+			r := xpath_regular_expression
+			r.match (a_xpath)
+			if r.has_matched  then
+				create ns_tags.make_filled ("", 1, r.match_count)
 				from
 					i := 1
-					create ns_tags.make_filled ("", i, l_matches.count)
-					l_matches.start
 				until
-					l_matches.after
+					i > r.match_count
 				loop
-					ns_tags[i] := l_matches.item
-					l_matches.forth
+					ns_tags[i] := r.captured_substring (i - 1)
+					i := i + 1
 				end
 			else
 				ns_tags := <<a_xpath>>
 			end
+
 			create l_xpath_array.make (ns_tags.count)
 			from
 				i := ns_tags.lower
@@ -266,89 +271,13 @@ feature -- Element change: handler
 
 feature {NONE} -- Implementation: handler
 
-	xmpp_xpath_handler_matches (s: STRING): LIST [STRING]
-			--| Examples
-			--| 	{http://etherx.jabber.org/streams}features
-			--| 	{urn:ietf:params:xml:ns:xmpp-sasl}failure
-			--| 	{urn:ietf:params:xml:ns:xmpp-sasl}success
-			--| 	{urn:ietf:params:xml:ns:xmpp-tls}proceed
-			--| 	{jabber:client}message
-			--| 	{jabber:client}presence
-			--| 	iq/{jabber:iq:roster}query
-		local
-			i,n: INTEGER
-			c: CHARACTER
-			in_curly: BOOLEAN
-			in_brace: BOOLEAN
-			after_brace_or_curly: BOOLEAN
-			m: detachable STRING
-		do
-			from
-				create {LINKED_LIST [STRING]} Result.make
-				i := 1
-				n := s.count
-			until
-				i > n
-			loop
-				c := s[i]
-				if m = Void or not after_brace_or_curly then
-					if m /= Void and in_curly then
-						m.extend (c)
-						if c = '}' then
-							in_curly := False
-							if not in_brace then
-								after_brace_or_curly := True
-								if s.valid_index (i+1) and then s[i+1] = '/' then
---									m.extend ('/') --| Ignore, it is optional
-									i := i + 1
-								end
-							elseif s.valid_index (i+1) and then s[i+1] = '/' then
-								after_brace_or_curly := True
---								m.extend ('/') --| Ignore, it is optional
---								m.remove_head (1) --| ignored
-								in_brace := False
-							end
-						end
-					elseif m /= Void and in_brace then
-						if c = ')' then
-							in_brace := False
-							after_brace_or_curly := True
-							--| character Ignored, it is optional
-						else
-							if c = '}' then
-								in_curly := False
-							end
-							m.extend (c)
-						end
-					elseif c = '{' then
-						in_curly := True
-						after_brace_or_curly := False
-						if m = Void or else not in_brace then
-							create m.make_empty
-							m.extend (c)
-						end
-					elseif c = '(' then
-						in_brace := True
-						after_brace_or_curly := False
-						create m.make_empty
-						--| character Ignored, it is optional
-					end
-				elseif m /= Void then
-					check (in_brace or in_curly) = False end
-					check after_brace_or_curly: after_brace_or_curly end
-					inspect c
-					when '/', '{', ')' then
-						m := Void
-						after_brace_or_curly := False
-					else
-						m.extend (c)
-					end
-				end
-				i := i + 1
-			end
-			if m /= Void and then after_brace_or_curly then
-				Result.extend (m)
-			end
+	xpath_regular_expression: RX_PCRE_REGULAR_EXPRESSION
+		once
+			create Result.make
+			Result.set_caseless (True)
+			Result.compile ("\(?{[^\}]+}\)?(\/?)[^\/]+")
+		ensure
+			Result_compiled: Result /= Void and then Result.is_compiled
 		end
 
 	id_handler (a_d: like get_id): PROCEDURE [ANY, TUPLE [ANY]]
@@ -397,7 +326,7 @@ feature -- Basic operation
 				until
 					until_lst.after
 				loop
-					if attached until_lst.item as arr then
+					if attached {ARRAY [STRING]} until_lst.item as arr then
 						from
 							i := arr.lower
 						until
@@ -408,9 +337,9 @@ feature -- Basic operation
 						end
 						if b then
 							k := until_lst.index
-							if attached a_event_data as e then
-								if e.name /~ a_name then
-									e.set_name (a_name) -- FIXME									
+							if a_event_data /= Void then
+								if a_event_data.name /~ a_name then
+									a_event_data.set_name (a_name) -- FIXME									
 								end
 							end
 							until_event_data.force (a_event_data, k)
@@ -810,9 +739,9 @@ feature {NONE} -- XML callback
 		require
 			a_tag_attached: a_tag /= Void
 		local
-			l_attribs: HASH_TABLE [STRING, STRING]
+			l_attribs: STRING_TABLE [READABLE_STRING_32]
 			l_tag: XMPP_XML_TAG
-			l_id_hdl_keys_to_remove: LINKED_LIST [STRING]
+			l_id_hdl_keys_to_remove: LINKED_LIST [READABLE_STRING_GENERAL]
 		do
 			log ("[end_xml] " + a_tag.localname + " [" + xml_depth.out + "]", {XMPP_LOGGER}.log_debug)
 			if been_reset then
@@ -829,9 +758,9 @@ feature {NONE} -- XML callback
 					until
 						xhdls.after
 					loop
-						if attached xhdls.item as xh then
+						if attached {TUPLE [cases: LIST [TUPLE [path: STRING; name: STRING]]; hdl: like xpath_handler]} xhdls.item as xh then
 							l_tag := a_tag
-							if attached xh.cases as l_cases then
+							if attached {LIST [TUPLE [path: STRING; name: STRING]]} xh.cases as l_cases then
 								from
 									l_cases.start
 								until
@@ -853,7 +782,7 @@ feature {NONE} -- XML callback
 					end
 				end
 				if attached id_handlers as idhdls and then not idhdls.is_empty then
-					if l_attribs.has_key ("id") and then attached l_attribs.found_item as l_id then
+					if l_attribs.has_key ("id") and then attached {STRING} l_attribs.found_item as l_id then
 						from
 							idhdls.start
 							create l_id_hdl_keys_to_remove.make
@@ -863,7 +792,7 @@ feature {NONE} -- XML callback
 							if
 								l_id.is_case_insensitive_equal (idhdls.key_for_iteration)
 							then
-								if attached idhdls.item_for_iteration as ih then
+								if attached {like id_handler} idhdls.item_for_iteration as ih then
 									log ("[Calling] id handler: " + l_id, {XMPP_LOGGER}.log_info)
 									l_id_hdl_keys_to_remove.force (idhdls.key_for_iteration)
 									ih.call ([a_tag])
@@ -912,7 +841,7 @@ feature {NONE} -- Implementation
 		do
 			log ("[XMPP Exception] " + m, {XMPP_LOGGER}.log_error)
 			create e
-			e.set_message (m)
+			e.set_description (m)
 			e.raise
 		end
 
@@ -926,6 +855,25 @@ feature {NONE} -- Implementation
 		end
 
 	base64_encoded (s: STRING): STRING_8
+		local
+			e64: UT_BASE64_ENCODING_OUTPUT_STREAM
+			o: UC_STRING
+--			d64: UT_BASE64_DECODING_INPUT_STREAM
+--			i: KL_STRING_INPUT_STREAM
+		do
+--			create i.make ("AHdlYgB3ZWI=")
+--			create d64.make (i)
+--			d64.read_string (12)
+
+			create o.make_empty
+			create e64.make (o, False, False)
+			e64.put_string (s)
+			e64.flush
+			e64.close
+			Result := o.string
+		end
+
+	base64_encoded_2 (s: STRING): STRING_8
 			-- base64 encoded value of `s'.
 		require
 			s_not_void: s /= Void
@@ -989,7 +937,7 @@ feature {NONE} -- Implementation
 		end
 
 note
-	copyright: "Copyright (c) 2003-2011, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2016, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat

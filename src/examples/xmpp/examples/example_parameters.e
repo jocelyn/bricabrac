@@ -11,11 +11,11 @@ feature {NONE} -- Initialization
 
 	initialize_parameters
 		do
-			servername := "jabber.origo.ethz.ch"
+			servername := "im.apinc.org"
 			host := servername
 			port := 5222
 			user := "bricabrac"
-			password := "ezadWEB8!"
+			password := "PASSWORD!!!"
 		end
 
 feature -- Access

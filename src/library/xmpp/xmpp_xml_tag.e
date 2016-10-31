@@ -1,8 +1,8 @@
 note
 	description: "Summary description for {XMPP_XML_TAG}."
 	author: "Jocelyn Fiat"
-	date: "$Date$"
-	revision: "$Revision$"
+	date: "$Date: 2008-12-17 18:27:29 +0100 (Wed, 17 Dec 2008) $"
+	revision: "$Revision: 7 $"
 
 class
 	XMPP_XML_TAG
@@ -12,13 +12,13 @@ create
 
 feature {NONE} -- Initialization
 
-	make (a_namespace: STRING_8; a_prefix: STRING_8; a_local_part: STRING_8; a_depth: INTEGER)
+	make (a_namespace: detachable READABLE_STRING_32; a_prefix: detachable READABLE_STRING_32; a_local_part: READABLE_STRING_32; a_depth: INTEGER)
 		do
 			namespace := a_namespace
 			prefixname := a_prefix
 			localname := a_local_part
 			if a_prefix /= Void then
-				name := a_prefix + ":" + a_local_part
+				name := a_prefix + "." + a_local_part
 			else
 				name := a_local_part
 			end
@@ -32,66 +32,66 @@ feature {NONE} -- Initialization
 
 feature -- Access
 
-	namespace: STRING
-	prefixname: STRING
-	localname: STRING
+	namespace: detachable READABLE_STRING_32
+	prefixname: detachable READABLE_STRING_32
+	localname: READABLE_STRING_32
 
 	depth: INTEGER
 
-	name: STRING
-	attribs: HASH_TABLE [STRING, STRING] -- name => value
-	content: STRING
+	name: READABLE_STRING_32
+	attribs: STRING_TABLE [READABLE_STRING_32] -- name => value
+	content: STRING_32
 	childs: LIST [XMPP_XML_TAG]
 
 feature -- Query
 
-	has_child (n: STRING): BOOLEAN
+	has_child (n: READABLE_STRING_GENERAL): BOOLEAN
 		do
 			from
 				childs.start
 			until
 				childs.after or Result
 			loop
-				Result := childs.item.localname.is_case_insensitive_equal (n)
+				Result := n.is_case_insensitive_equal (childs.item.localname)
 				childs.forth
 			end
 		end
 
-	child (n: STRING): XMPP_XML_TAG
+	child (n: READABLE_STRING_GENERAL): XMPP_XML_TAG
 		do
 			from
 				childs.start
 			until
 				childs.after or Result /= Void
 			loop
-				if childs.item.localname.is_case_insensitive_equal (n) then
+				if n.is_case_insensitive_equal (childs.item.localname) then
 					Result := childs.item
 				end
 				childs.forth
 			end
 		end
 
-	attribute_value (n, d: STRING): STRING
+	attribute_value (n, d: READABLE_STRING_GENERAL): READABLE_STRING_32
 		do
 			if attribs.has_key (n) then
 				Result := attribs.found_item
 			else
-				Result := d
+				Result := d.as_string_32
 			end
 		end
 
-	child_content (n, d: STRING): STRING
+	child_content (n, d: READABLE_STRING_GENERAL): READABLE_STRING_32
 		do
 			if attached child (n) as l_tag then
 				Result := l_tag.content
 			end
 			if Result = Void then
-				Result := d
+				Result := d.as_string_32
 			end
 		end
 
 note
-	copyright: "Copyright (c) 2003-2011, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2016, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat
