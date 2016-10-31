@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-2-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-2-0 http://www.eiffel.com/developers/xml/configuration-1-2-0.xsd" name="mbox_support" uuid="B4ADC4C8-7BF3-4E61-A3AE-0F1EB4689F97">
+	<target name="mbox_support">
+		<root class="MBOX_APPLICATION" feature="make"/>
+		<option profile="false" warning="true">
+			<assertions/>
+		</option>
+		<setting name="console_application" value="true"/>
+		<setting name="multithreaded" value="true"/>
+		<post_compile_action working_directory="G:\projects\mbox_support\" command="C:\WINDOWS\system32\cmd.exe /C &quot;update_fbin.bat&quot;">
+			<condition>
+				<build value="finalize"/>
+			</condition>
+		</post_compile_action>
+		<precompile name="base_pre" location="$ISE_PRECOMP\base.ecf"/>
+		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
+		<library name="gobo" location="$ISE_LIBRARY\library\gobo\gobo.ecf"/>
+		<library name="time" location="$ISE_LIBRARY\library\time\time.ecf"/>
+		<cluster name="mbox_support" location=".\src\">
+			<file_rule>
+				<exclude>/EIFGENs$</exclude>
+				<exclude>/.svn$</exclude>
+				<exclude>/CVS$</exclude>
+			</file_rule>
+		</cluster>
+	</target>
+	<target name="mbox_support_dotnet" extends="mbox_support">
+		<setting name="msil_generation" value="true"/>
+	</target>
+	<target name="mbox_support_gui" extends="mbox_support">
+		<root class="MBOX_SUPPORT_GRAPHICAL_APPLICATION" feature="make_and_launch"/>
+		<setting name="executable_name" value="mbox_support_gui"/>
+		<library name="eiffel_src_framework" location="$EIFFEL_SRC\framework\framework.ecf"/>
+		<library name="vision2" location="$ISE_LIBRARY\library\vision2\vision2.ecf"/>
+		<cluster name="gui" location=".\src\graphical\" recursive="true"/>
+	</target>
+</system>
