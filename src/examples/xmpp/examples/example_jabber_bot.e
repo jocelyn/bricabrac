@@ -50,7 +50,7 @@ feature -- Access
 				loop
 					l_data := xmpp.process_until (<<"message", "presence", "end_stream", "session_start", "vcard">>, -1)
 					if l_data /= Void then
-						if {n: STRING} l_data.name then
+						if attached {STRING} l_data.name as n then
 							if n.is_case_insensitive_equal ("message") then
 								l_from := l_data.variable ("from", "anonymous")
 								l_send_is_xmpp_user := l_from.substring_index (xmpp.base_jid , 1) = 1
@@ -61,7 +61,7 @@ feature -- Access
 								if l_type /= Void then
 									print ("<type=" + l_type + ">")
 								end
-								if {subj: STRING} l_data.variable ("subject", Void) then
+								if attached {STRING} l_data.variable ("subject", Void) as subj then
 									print ("%T subject=%"" + subj + "%"")
 								end
 								print ("%N")
@@ -94,7 +94,9 @@ feature -- Access
 									if l_send_is_xmpp_user then
 										print ("From XMPP's user [" + l_from + "]!!!%N")
 									else
-										xmpp.message (l_from, "Thanks for sending me the message [" + m + "]", l_type)
+										if l_data.variable ("type", "") /~ "error" then
+											xmpp.message (l_from, "Thanks for sending me the message [" + m + "]", l_type)
+										end
 									end
 								end
 							elseif n.is_case_insensitive_equal ("presence") then
@@ -107,7 +109,7 @@ feature -- Access
 							elseif n.is_case_insensitive_equal ("vcard") then
 								print ("Vcard requested...%N")
 								l_from := l_data.variable ("from", Void)
-								if {vars: HASH_TABLE [STRING, STRING]} l_data.variables then
+								if attached {HASH_TABLE [STRING, STRING]} l_data.variables as vars then
 									from
 										vars.start
 										create m.make_empty
@@ -200,6 +202,8 @@ feature -- Actions
 				process_help (a_data)
 			elseif op.is_equal ("vcard") then
 				process_vcard (a_data, s)
+			elseif op.is_equal ("room") then
+				process_room (a_data, s)
 			elseif op.is_equal ("message") then
 				process_message (a_data, s)
 			else
@@ -256,6 +260,38 @@ feature -- Actions
 			end
 		end
 
+	process_room (a_data: XMPP_EVENT_DATA; a_param: STRING)
+		require
+			initialized: initialized
+			no_error: last_error = 0
+		local
+			i,j: INTEGER
+			l_to, par: STRING
+			msg: STRING
+		do
+--			xmpp.enter_room (a_status, a_show, a_to, a_type: STRING_8, a_priority: INTEGER_32)
+--			xmpp.send ("<presence from='" + xmpp.full_jid + "' to='eiffelstudio@conference.jabber.origo.ethz.ch/bricabot'/>")			
+			xmpp.send ("<presence from='" + xmpp.full_jid + "' to='eiffelstudio@conference.jabber.origo.ethz.ch/bricabot'>%
+  				%<x xmlns='http://jabber.org/protocol/muc#user'>%
+    			%<item affiliation='none' jid='"+ xmpp.full_jid +"' role='participant'/>%
+    			%</x>%
+    			%</presence>")
+
+--			xmpp.send ("<iq from='" + xmpp.full_jid + "' %
+--    % id='bricabrac' %
+--    % to='conference.jabber.origo.ethz.ch' %
+--    % type='get'>%
+--  	%<query xmlns='http://jabber.org/protocol/disco#info'/>%
+--	%</iq>")
+
+--			xmpp.send ("<iq from='" + xmpp.full_jid + "' %
+--    % id='bricabrac' %
+--    % to='conference.jabber.origo.ethz.ch' %
+--    % type='get'>%
+--  	%<query xmlns='http://jabber.org/protocol/disco#items'/>%
+--	%</iq>")
+		end
+
 	process_message (a_data: XMPP_EVENT_DATA; a_param: STRING)
 		require
 			initialized: initialized
@@ -295,7 +331,7 @@ feature -- Actions
 		end
 
 note
-	copyright: "Copyright (c) 2003-2008, Jocelyn Fiat"
+	copyright: "Copyright (c) 2003-2016, Jocelyn Fiat"
 	license:   "Eiffel Forum License v2 (see http://www.eiffel.com/licensing/forum.txt)"
 	source: "[
 			 Jocelyn Fiat
