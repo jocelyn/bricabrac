@@ -96,6 +96,9 @@ feature -- Access
 			Result := options_values_of_name (exclude_switch)
 		end
 
+	copyright: STRING = ""
+			-- <Precursor>.
+
 feature {NONE} -- Usage
 
 	name: STRING = "EIFGENs finder (and remover) Utility"
