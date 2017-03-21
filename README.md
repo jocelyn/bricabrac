@@ -6,6 +6,7 @@ Most of those items were written as example, testing, and quick and dirty tools.
 Some of them are more stable, however consider most of them as alpha quality.
 
 Consider this repository as draft, and partly obsolete.
+The content is experimental, and if valuable, the related resource gets integrated into public repositories.
 
 
 - Eiffel XMPP library (XMPP is also known as Jabber)
